@@ -48,7 +48,7 @@ Posiada dostęp tylko do odczytu części danych (dashboardu).
 ---
 
 ## Model bazy danych
-Deklaracja bazy danych została stworzona w pliku [schema.sql](../src/schema.sql).
+Deklaracja bazy danych została stworzona w pliku [schema.sql](../schema.sql).
 
 Poniżej przedstawiono schemat bazy danych wygenerowany w DataGrip.
 
@@ -144,7 +144,7 @@ Dodatkowo dzięki użyciu biblioteki `sqlx` w kodzie Rust, aplikacja ma specjaln
 ### Transakcje
 Operacje złożone są realizowane z użyciem transakcji wywoływanych z poziomu kodu `self.pool.begin()`. 
 
-Przykładowa implementacja znajduje się w pliku [src/db/mod.rs](../src/db/mod.rs) oraz [src/db/device.rs](../src/db/device.rs) w funkcji `create_device()`.
+Przykładowa implementacja znajduje się w pliku [src/db/device.rs](../src/db/device.rs) w funkcji `create_device()`.
 
 ---
 
