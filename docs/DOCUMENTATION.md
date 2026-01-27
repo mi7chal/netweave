@@ -27,7 +27,7 @@ Ze względu na możliwość przyszłej rozbudowy i charakterystyke aplikacji wyb
 
 ## Użytkownicy
 Ze względu na praktyczne ograniczenia języka `Rust` oraz popularnych bibliotek (`sqlx`), w których standardem jest używanie
-struktury (Pool)[https://docs.rs/sqlx/latest/sqlx/struct.Pool.html] w implemntacji systemu użyto jednego użytkownika bazy danych z pełnymi uprawnieniami do zarządzania bazą. Stworzono natomiast role użytkoników, które działają na poziomie aplikacji.
+struktury [Pool](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html) w implemntacji systemu użyto jednego użytkownika bazy danych z pełnymi uprawnieniami do zarządzania bazą. Stworzono natomiast role użytkoników, które działają na poziomie aplikacji.
 
 System przewiduje dwa poziomy dostępu:
 
@@ -48,7 +48,7 @@ Posiada dostęp tylko do odczytu części danych (dashboardu).
 ---
 
 ## Model bazy danych
-Deklaracja bazy danych została stworzona w pliku (schema.sql)[../src/schema.sql].
+Deklaracja bazy danych została stworzona w pliku [schema.sql](../src/schema.sql).
 
 Poniżej przedstawiono schemat bazy danych wygenerowany w DataGrip.
 
@@ -132,8 +132,10 @@ Tabela `devices` odnosi się do samej siebie w kolumnie `parent_device_id`, jedn
 
 ---
 
-## Implementacja Logiki Biznesowej w Bazie
+## Spójność danych
 W celu zapewnienia spójności danych i wygody obsługi bazy z poziomu kodu zapewniono następujące mechanizmy.
+
+Dodatkowo dzięki użyciu biblioteki `sqlx` w kodzie Rust, aplikacja ma specjalne struktury powiązane z bazą, które zapewniają bezpieczny i spójny dostęp do informacji także z poziomu kodu. Co więcej, biblioteka ta wymusza compiile-time check, czyli zapytania są **sprawdzane już w momenci kompilacji**.
 
 ### Triggery 
 * Zapewniają spójność adresów MAC
@@ -142,13 +144,14 @@ W celu zapewnienia spójności danych i wygody obsługi bazy z poziomu kodu zape
 ### Transakcje
 Operacje złożone są realizowane z użyciem transakcji wywoływanych z poziomu kodu `self.pool.begin()`. 
 
-Przykładowa implementacja znajduje się w pliku (src/db/mod.rs)[../src/db/device.rs] w funkcji `create_device()`.
+Przykładowa implementacja znajduje się w pliku [src/db/mod.rs](../src/db/mod.rs) oraz [src/db/device.rs](../src/db/device.rs) w funkcji `create_device()`.
 
 ---
 
 ## Bezpieczeństwo
-### 6.1. Przechowywanie haseł
-Hasła użytkowników nie są przechowywane jawnym tekstem. [cite_start]Wykorzystano algorytm **Argon2 / Bcrypt** (zależnie co masz w Rust) do hasłowania danych uwierzytelniających przed zapisem do bazy[cite: 27].
 
-### 6.2. Ochrona przed SQL Injection
-Aplikacja wykorzystuje bibliotekę `sqlx` (lub inną, której używasz), która wymusza stosowanie zapytań parametryzowanych (Prepared Statements). [cite_start]Dane wejściowe od użytkownika nigdy nie są doklejane bezpośrednio do łańcucha zapytania SQL[cite: 25].
+### Przechowywanie haseł
+Hasła użytkowników hashowane są z użyciem `bcrypt`.
+
+### SQL Injection
+Aplikacja wykorzystuje bibliotekę `sqlx`, która dzięki parametrom zapewnia ochronę przez wstrzykiwaniem SQL.
