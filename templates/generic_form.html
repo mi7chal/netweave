@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>{{ title }} - Homelab Manager</title>
+        <link rel="stylesheet" href="/assets/style.css" />
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    </head>
+    <body hx-boost="true">
+        <a href="{{ back_link }}" class="back-link">← Back</a>
+
+        <h1>{{ title }}</h1>
+
+        {% if let Some(error) = error %}
+        <div class="alert error"><strong>Error:</strong> {{ error }}</div>
+        {% endif %}
+
+        <form action="{{ action }}" method="POST">
+            {% for field in fields %}
+            <div class="form-group">
+                {% match field.field_type %} {% when
+                crate::ui::FieldType::Checkbox %}
+                <label>
+                    <input
+                        type="checkbox"
+                        name="{{ field.name }}"
+                        value="true"
+                        {%
+                        if
+                        field.checked
+                        %}checked{%
+                        endif
+                        %}
+                    />
+                    {{ field.label }}
+                </label>
+
+                {% when crate::ui::FieldType::Hidden %}
+                <input
+                    type="hidden"
+                    name="{{ field.name }}"
+                    value="{{ field.value.clone().unwrap_or_default() }}"
+                />
+
+                {% when crate::ui::FieldType::Select %}
+                <label for="{{ field.name }}">
+                    {{ field.label }} {% if field.required %}*{% endif %}
+                </label>
+                <select id="{{ field.name }}" name="{{ field.name }}">
+                    {% if !field.required %}
+                    <option value="">-- Select --</option>
+                    {% endif %} {% for opt in field.options %}
+                    <option
+                        value="{{ opt.value }}"
+                        {%
+                        if
+                        opt.selected
+                        %}selected{%
+                        endif
+                        %}
+                    >
+                        {{ opt.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                {% when _ %}
+                <label for="{{ field.name }}">
+                    {{ field.label }} {% if field.required %}*{% endif %}
+                </label>
+
+                <input
+                    id="{{ field.name }}"
+                    name="{{ field.name }}"
+                    {%
+                    if
+                    matches!(field.field_type,
+                    crate::ui::FieldType::Number)
+                    %}
+                    type="number"
+                    step="any"
+                    {%
+                    else
+                    if
+                    matches!(field.field_type,
+                    crate::ui::FieldType::Url)
+                    %}
+                    type="url"
+                    {%
+                    else
+                    if
+                    matches!(field.field_type,
+                    crate::ui::FieldType::Password)
+                    %}
+                    type="password"
+                    {%
+                    else
+                    %}
+                    type="text"
+                    {%
+                    endif
+                    %}
+                    value="{{ field.value.clone().unwrap_or_default() }}"
+                    placeholder="{{ field.placeholder.clone().unwrap_or_default() }}"
+                    {%
+                    if
+                    field.required
+                    %}required{%
+                    endif
+                    %}
+                />
+
+                {% endmatch %}
+            </div>
+            {% endfor %}
+
+            <div class="form-actions mt-20">
+                <button type="submit" class="btn primary">Save</button>
+                <a href="{{ back_link }}" class="btn secondary">Cancel</a>
+            </div>
+        </form>
+    </body>
+</html>

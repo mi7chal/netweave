@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: homelab_manager_db
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "${DATABASE_PORT}:5432"
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+
+      # Comment this line in order to disable initial schema setup
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # Only for dev
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: homelab_manager_pgweb
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=disable
+    depends_on:
+      - db
+    restart: unless-stopped

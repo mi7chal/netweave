@@ -1,0 +1,37 @@
+/target
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Rust
+Cargo.lock
+**/*.rs.bk
+
+# Environment
+.env
+.env.local
+
+# OS
+Thumbs.db
+
+# Database
+*.sqlite
+*.db
+/db_data/
+
+
+# Logs
+logs/
+*.log
+
+
+# misc
+.venv/
+node_modules/
+dist//
+build/
