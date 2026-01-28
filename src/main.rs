@@ -30,8 +30,31 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
 
+    // OIDC Service
+    // OIDC Service
+    tracing::debug!("Initializing OIDC Service...");
+    let oidc = match homelab_manager::auth::oidc::OidcService::from_env().await {
+        Ok(service) => {
+            tracing::info!("OIDC Service initialized.");
+            Some(service)
+        },
+        Err(e) => {
+            tracing::warn!("OIDC init failed (running without OIDC): {}", e);
+            None
+        }
+    };
+
+    // Create state
+    let state = homelab_manager::create_state(pool, oidc).await;
+
+    // Start monitoring background task
+    tokio::spawn(homelab_manager::monitoring::start_monitoring(state.clone()));
+    
+    // Start integration sync background task
+    tokio::spawn(homelab_manager::integrations::run_sync_task(state.clone()));
+
     // build app
-    let app = create_app(pool).await;
+    let app = create_app(state);
 
     // create socket
     let addr = SocketAddr::from(([0, 0, 0, 0], 8789));

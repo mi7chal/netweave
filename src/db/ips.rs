@@ -1,38 +1,24 @@
 use super::{CreateIpParams, Db};
+use crate::entities::{devices, interfaces, ip_addresses, networks};
 use crate::models::{DeviceIpView, IpStatus, NetworkIpView};
-use sqlx::types::ipnetwork::IpNetwork;
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {
-    pub async fn create_ip(&self, params: CreateIpParams) -> Result<Uuid, sqlx::Error> {
+    pub async fn create_ip(&self, params: CreateIpParams) -> Result<Uuid, anyhow::Error> {
         // Resolve Interface ID if device_id is provided
         let interface_id = if let Some(did) = params.device_id {
-            // Find the first interface (usually eth0)
-            struct IfaceId {
-                id: Uuid,
-            }
-            let res = sqlx::query_as!(
-                IfaceId,
-                "SELECT id FROM interfaces WHERE device_id = $1 ORDER BY name ASC LIMIT 1",
-                did
-            )
-            .fetch_optional(&self.pool)
-            .await?;
-
-            if let Some(row) = res {
-                Some(row.id)
-            } else {
-                None
-            }
+            let iface = interfaces::Entity::find()
+                .filter(interfaces::Column::DeviceId.eq(did))
+                .order_by_asc(interfaces::Column::Name)
+                .one(&self.conn)
+                .await?;
+            iface.map(|i| i.id)
         } else {
             None
         };
 
         let new_id = Uuid::now_v7();
-        // Since we are inserting into a VARCHAR column checked against values,
-        // and IpStatus maps to SCREAMING_SNAKE_CASE via sqlx::Type,
-        // we can rely on sqlx to serialize it if we cast or use explicit string.
-        // But since we are constructing the query manually and want to be safe with the CHECK constraint string literal:
         let status_str = match params.status {
             IpStatus::Active => "ACTIVE",
             IpStatus::Reserved => "RESERVED",
@@ -41,8 +27,8 @@ impl Db {
             IpStatus::Free => "FREE",
         };
 
-        let result = sqlx::query!(
-            r#"
+        // Raw SQL for complex generic index constrained ON CONFLICT
+        let sql = r#"
             INSERT INTO ip_addresses (
                 id, interface_id, network_id, ip_address, mac_address,
                 is_static, status, description
@@ -55,83 +41,145 @@ impl Db {
                 status = EXCLUDED.status,
                 description = COALESCE(EXCLUDED.description, ip_addresses.description)
             WHERE ip_addresses.interface_id IS NULL
-            "#,
-            new_id,
-            interface_id,
-            params.network_id,
-            params.ip_address as _,
-            params.mac_address as _,
-            params.is_static,
-            status_str,
-            params.description
-        )
-        .execute(&self.pool)
-        .await?;
+        "#;
 
-        if result.rows_affected() == 0 {
-            return Err(sqlx::Error::Protocol("IP address already occupied".into()));
-        }
+        let stmt = Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            sql,
+            vec![
+                new_id.into(),
+                interface_id.into(),
+                params.network_id.into(),
+                params.ip_address.to_string().into(),
+                params.mac_address.map(|m| m.to_string()).into(),
+                params.is_static.into(),
+                status_str.into(),
+                params.description.into(),
+            ],
+        );
 
+        self.conn.execute(stmt).await?;
         Ok(new_id)
     }
 
-    pub async fn list_device_ips(&self, device_id: Uuid) -> Result<Vec<DeviceIpView>, sqlx::Error> {
-        sqlx::query_as!(
-            DeviceIpView,
-            r#"
-            SELECT
-                i.id,
-                iface.device_id as "device_id!",
-                iface.name as "interface_name!",
-                i.ip_address as "ip_address: std::net::IpAddr",
-                i.mac_address,
-                i.is_static as "is_static",
-                i.status as "status: IpStatus",
-                n.name as "network_name",
-                n.cidr as "network_cidr: IpNetwork"
-            FROM ip_addresses i
-            JOIN interfaces iface ON i.interface_id = iface.id
-            JOIN networks n ON i.network_id = n.id
-            WHERE iface.device_id = $1
-            ORDER BY i.ip_address ASC
-            "#,
-            device_id
-        )
-        .fetch_all(&self.pool)
-        .await
+    pub async fn list_device_ips(
+        &self,
+        device_id: Uuid,
+    ) -> Result<Vec<DeviceIpView>, anyhow::Error> {
+        let backend = self.conn.get_database_backend();
+        let query = ip_addresses::Entity::find()
+            .join(JoinType::InnerJoin, ip_addresses::Relation::Interface.def())
+            .join(JoinType::InnerJoin, ip_addresses::Relation::Network.def())
+            .filter(interfaces::Column::DeviceId.eq(device_id))
+            .order_by_asc(ip_addresses::Column::IpAddress)
+            .select_only()
+            .column(ip_addresses::Column::Id)
+            .column_as(interfaces::Column::DeviceId, "device_id")
+            .column_as(interfaces::Column::Name, "interface_name")
+            .column_as(ip_addresses::Column::IpAddress, "ip_address")
+            .column(ip_addresses::Column::MacAddress)
+            .column(ip_addresses::Column::IsStatic)
+            .column(ip_addresses::Column::Status)
+            .column_as(networks::Column::Name, "network_name")
+            .column_as(networks::Column::Cidr, "network_cidr")
+            .build(backend);
+
+        let res = self.conn.query_all(query).await?;
+
+        let mut views = Vec::new();
+        for row in res {
+            let status_str: String = row.try_get("", "status")?;
+            let status = match status_str.as_str() {
+                "ACTIVE" => IpStatus::Active,
+                "RESERVED" => IpStatus::Reserved,
+                "DHCP" => IpStatus::Dhcp,
+                "DEPRECATED" => IpStatus::Deprecated,
+                _ => IpStatus::Free,
+            };
+
+            let ip_str: String = row.try_get("", "ip_address")?;
+            let cidr_str: String = row.try_get("", "network_cidr")?;
+            let mac_str: Option<String> = row.try_get("", "mac_address")?;
+
+            views.push(DeviceIpView {
+                id: row.try_get("", "id")?,
+                device_id: row.try_get("", "device_id")?,
+                interface_name: row.try_get("", "interface_name")?,
+                ip_address: ip_str
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                mac_address: mac_str.and_then(|s| s.parse().ok()), // parse Option<String> -> Option<MacAddress>
+                is_static: row.try_get("", "is_static")?,
+                status: Some(status),
+                network_name: row.try_get("", "network_name")?,
+                network_cidr: cidr_str.parse().ok(),
+            });
+        }
+
+        Ok(views)
     }
 
     pub async fn list_network_ips(
         &self,
         network_id: Uuid,
-    ) -> Result<Vec<NetworkIpView>, sqlx::Error> {
-        sqlx::query_as!(
-            NetworkIpView,
-            r#"
-            SELECT
-                i.id,
-                i.ip_address as "ip_address: std::net::IpAddr",
-                i.mac_address,
-                i.status as "status: IpStatus",
-                i.description,
-                d.hostname as "device_hostname?",
-                iface.name as "interface_name?"
-            FROM ip_addresses i
-            LEFT JOIN interfaces iface ON i.interface_id = iface.id
-            LEFT JOIN devices d ON iface.device_id = d.id
-            WHERE i.network_id = $1
-            ORDER BY i.ip_address ASC
-            "#,
-            network_id
-        )
-        .fetch_all(&self.pool)
-        .await
+    ) -> Result<Vec<NetworkIpView>, anyhow::Error> {
+        let backend = self.conn.get_database_backend();
+        let query = ip_addresses::Entity::find()
+            .join(JoinType::LeftJoin, ip_addresses::Relation::Interface.def())
+            .join_rev(
+                JoinType::LeftJoin,
+                devices::Entity::belongs_to(interfaces::Entity)
+                    .from(devices::Column::Id)
+                    .to(interfaces::Column::DeviceId)
+                    .into(),
+            )
+            .filter(ip_addresses::Column::NetworkId.eq(network_id))
+            .order_by_asc(ip_addresses::Column::IpAddress)
+            .select_only()
+            .column(ip_addresses::Column::Id)
+            .column_as(ip_addresses::Column::IpAddress, "ip_address")
+            .column(ip_addresses::Column::MacAddress)
+            .column(ip_addresses::Column::Status)
+            .column(ip_addresses::Column::Description)
+            .column_as(devices::Column::Hostname, "device_hostname")
+            .column_as(interfaces::Column::Name, "interface_name")
+            .build(backend);
+
+        let res = self.conn.query_all(query).await?;
+
+        let mut views = Vec::new();
+        for row in res {
+            let status_str: String = row.try_get("", "status")?;
+            let status = match status_str.as_str() {
+                "ACTIVE" => IpStatus::Active,
+                "RESERVED" => IpStatus::Reserved,
+                "DHCP" => IpStatus::Dhcp,
+                "DEPRECATED" => IpStatus::Deprecated,
+                _ => IpStatus::Free,
+            };
+
+            let ip_str: String = row.try_get("", "ip_address")?;
+            let mac_str: Option<String> = row.try_get("", "mac_address")?;
+
+            views.push(NetworkIpView {
+                id: row.try_get("", "id")?,
+                ip_address: ip_str
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                mac_address: mac_str.and_then(|s| s.parse().ok()),
+                status,
+                description: row.try_get("", "description")?,
+                device_hostname: row.try_get("", "device_hostname").ok(),
+                interface_name: row.try_get("", "interface_name").ok(),
+            });
+        }
+        Ok(views)
     }
 
-    pub async fn delete_ip(&self, id: Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM ip_addresses WHERE id = $1", id)
-            .execute(&self.pool)
+    pub async fn delete_ip(&self, id: Uuid) -> Result<bool, anyhow::Error> {
+        let res = ip_addresses::Entity::delete_by_id(id)
+            .exec(&self.conn)
             .await?;
-        Ok(result.rows_affected() > 0)
+        Ok(res.rows_affected > 0)
     }
 }

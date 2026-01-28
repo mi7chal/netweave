@@ -264,7 +264,6 @@ FOR EACH ROW EXECUTE FUNCTION generic_audit_log_func();
 -- better to much indexs than too few
 
 
-CREATE INDEX IF NOT EXISTS idx_devices_name ON devices(name);
 CREATE INDEX IF NOT EXISTS idx_devices_hostname ON devices(hostname);
 CREATE INDEX IF NOT EXISTS idx_devices_parent_device_id ON devices(parent_device_id);
 CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at DESC);
@@ -273,7 +272,7 @@ CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_interfaces_device_id ON interfaces(device_id);
 CREATE INDEX IF NOT EXISTS idx_interfaces_mac_address ON interfaces(mac_address);
 
-CREATE INDEX IF NOT EXISTS idx_networks_cidr ON networks(cidr)
+CREATE INDEX IF NOT EXISTS idx_networks_cidr ON networks(cidr);
 
 CREATE INDEX IF NOT EXISTS idx_ip_addresses_interface_id ON ip_addresses(interface_id);
 CREATE INDEX IF NOT EXISTS idx_ip_addresses_network_id ON ip_addresses(network_id);

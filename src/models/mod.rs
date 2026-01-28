@@ -1,11 +1,10 @@
 /// Module for data models used in the application.
 ///
-/// See `entities`, `forms`, `types`, and `display` submodules for specific definitions.
-pub mod display;
+/// See `entities`, `payloads`, and `types` submodules for specific definitions.
 pub mod entities;
-pub mod forms;
+pub mod payloads;
 pub mod types;
 
 pub use entities::*;
-pub use forms::*;
+pub use payloads::*;
 pub use types::*;

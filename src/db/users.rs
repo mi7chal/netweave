@@ -1,4 +1,6 @@
 use super::Db;
+use crate::entities::users;
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {
@@ -8,50 +10,45 @@ impl Db {
         email: &str,
         password_hash: &str,
         role: &str,
-    ) -> Result<Uuid, sqlx::Error> {
-        let existing = sqlx::query!("SELECT id FROM users WHERE username = $1", username)
-            .fetch_optional(&self.pool)
+    ) -> Result<Uuid, anyhow::Error> {
+        let existing = users::Entity::find()
+            .filter(users::Column::Username.eq(username))
+            .one(&self.conn)
             .await?;
 
-        if let Some(row) = existing {
-            return Ok(row.id);
+        if let Some(user) = existing {
+            return Ok(user.id);
         }
 
         let new_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO users (id, username, email, password_hash, role)
-            VALUES ($1, $2, $3, $4, $5)
-            "#,
-            new_id,
-            username,
-            email,
-            password_hash,
-            role
-        )
-        .execute(&self.pool)
-        .await?;
+        let user = users::ActiveModel {
+            id: Set(new_id),
+            username: Set(username.to_string()),
+            email: Set(email.to_string()),
+            password_hash: Set(Some(password_hash.to_string())),
+            role: Set(role.to_string()),
+            ..Default::default()
+        };
 
+        user.insert(&self.conn).await?;
         Ok(new_id)
     }
 
     pub async fn get_user_by_username(
         &self,
         username: &str,
-    ) -> Result<Option<(Uuid, String, String, String)>, sqlx::Error> {
-        let user = sqlx::query!(
-            "SELECT id, username, role, password_hash FROM users WHERE username = $1",
-            username
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+    ) -> Result<Option<(Uuid, String, String, String)>, anyhow::Error> {
+        let user = users::Entity::find()
+            .filter(users::Column::Username.eq(username))
+            .one(&self.conn)
+            .await?;
 
-        Ok(user.map(|row| {
+        Ok(user.map(|u| {
             (
-                row.id,
-                row.username,
-                row.role,
-                row.password_hash.unwrap_or_default(),
+                u.id,
+                u.username,
+                u.role,
+                u.password_hash.unwrap_or_default(),
             )
         }))
     }

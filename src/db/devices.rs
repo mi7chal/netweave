@@ -1,92 +1,120 @@
 use super::Db;
+use crate::entities::{devices, interfaces};
 use crate::models::{CreateDevicePayload, Device, DeviceType};
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {
-    pub async fn list_devices(&self, search: Option<String>) -> Result<Vec<Device>, sqlx::Error> {
-        let search = search.unwrap_or_default();
-        let search_pattern = format!("%{}%", search);
+    pub async fn list_devices(&self, search: Option<String>) -> Result<Vec<Device>, anyhow::Error> {
+        let search = search.unwrap_or_default().to_lowercase();
 
-        // We select 'type' directly. The Device struct has #[sqlx(rename = "type")] on device_type field,
-        // so it expects a column named "type".
-        sqlx::query_as!(
-            Device,
-            r#"
-            SELECT
-                id, parent_device_id, hostname,
-                type as "device_type: DeviceType",
-                cpu_cores, ram_gb, storage_gb, os_info,
-                meta_data, created_at
-            FROM devices
-            WHERE hostname ILIKE $1 OR type ILIKE $1 OR os_info ILIKE $1
-            ORDER BY hostname ASC
-            "#,
-            search_pattern
-        )
-        .fetch_all(&self.pool)
-        .await
+        let mut query = devices::Entity::find();
+
+        if !search.is_empty() {
+            let s = format!("%{}%", search);
+            query = query.filter(
+                Condition::any()
+                    .add(devices::Column::Hostname.like(&s))
+                    .add(devices::Column::Type.like(&s))
+                    .add(devices::Column::OsInfo.like(&s)),
+            );
+        }
+
+        let devices = query
+            .order_by_asc(devices::Column::Hostname)
+            .all(&self.conn)
+            .await?;
+
+        Ok(devices
+            .into_iter()
+            .map(|d| {
+                let dt = match d.r#type.as_str() {
+                    "PHYSICAL" => DeviceType::Physical,
+                    "VM" => DeviceType::Vm,
+                    "LXC" => DeviceType::Lxc,
+                    "CONTAINER" => DeviceType::Container,
+                    "SWITCH" => DeviceType::Switch,
+                    "AP" => DeviceType::Ap,
+                    "ROUTER" => DeviceType::Router,
+                    _ => DeviceType::Other,
+                };
+                Device {
+                    id: d.id,
+                    parent_device_id: d.parent_device_id,
+                    hostname: d.hostname,
+                    device_type: dt,
+                    cpu_cores: d.cpu_cores,
+                    ram_gb: d.ram_gb,
+                    storage_gb: d.storage_gb,
+                    os_info: d.os_info,
+                    meta_data: d.meta_data,
+                    created_at: d.created_at.into(),
+                }
+            })
+            .collect())
     }
 
-    pub async fn get_device(&self, id: Uuid) -> Result<Option<Device>, sqlx::Error> {
-        sqlx::query_as!(
-            Device,
-            r#"
-            SELECT
-                id, parent_device_id, hostname,
-                type as "device_type: DeviceType",
-                cpu_cores, ram_gb, storage_gb, os_info,
-                meta_data, created_at
-            FROM devices
-            WHERE id = $1
-            "#,
-            id
-        )
-        .fetch_optional(&self.pool)
-        .await
+    pub async fn get_device(&self, id: Uuid) -> Result<Option<Device>, anyhow::Error> {
+        let device = devices::Entity::find_by_id(id).one(&self.conn).await?;
+
+        Ok(device.map(|d| {
+            let dt = match d.r#type.as_str() {
+                "PHYSICAL" => DeviceType::Physical,
+                "VM" => DeviceType::Vm,
+                "LXC" => DeviceType::Lxc,
+                "CONTAINER" => DeviceType::Container,
+                "SWITCH" => DeviceType::Switch,
+                "AP" => DeviceType::Ap,
+                "ROUTER" => DeviceType::Router,
+                _ => DeviceType::Other,
+            };
+            Device {
+                id: d.id,
+                parent_device_id: d.parent_device_id,
+                hostname: d.hostname,
+                device_type: dt,
+                cpu_cores: d.cpu_cores,
+                ram_gb: d.ram_gb,
+                storage_gb: d.storage_gb,
+                os_info: d.os_info,
+                meta_data: d.meta_data,
+                created_at: d.created_at.into(),
+            }
+        }))
     }
 
-    pub async fn create_device(&self, params: CreateDevicePayload) -> Result<Uuid, sqlx::Error> {
-        let mut tx = self.pool.begin().await?;
-
+    pub async fn create_device(&self, params: CreateDevicePayload) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO devices (id, parent_device_id, hostname, type, os_info, cpu_cores, ram_gb, storage_gb)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            "#,
-            new_id,
-            params.parent_device_id,
-            params.hostname,
-            params.device_type,
-            params.os_info,
-            params.cpu_cores,
-            params.ram_gb,
-            params.storage_gb
-        )
-        .execute(&mut *tx)
-        .await?;
+
+        let txn = self.conn.begin().await?;
+
+        let device = devices::ActiveModel {
+            id: Set(new_id),
+            parent_device_id: Set(params.parent_device_id),
+            hostname: Set(params.hostname),
+            r#type: Set(params.device_type),
+            os_info: Set(params.os_info),
+            cpu_cores: Set(params.cpu_cores),
+            ram_gb: Set(params.ram_gb),
+            storage_gb: Set(params.storage_gb),
+            ..Default::default()
+        };
+        device.insert(&txn).await?;
 
         // Create default interface 'eth0'
         let interface_id = Uuid::now_v7();
-        let mac = params
-            .mac_address
-            .as_deref()
-            .filter(|s| !s.is_empty())
-            .and_then(|s| s.parse::<mac_address::MacAddress>().ok());
+        let mac = params.mac_address;
 
-        sqlx::query!(
-            r#"
-            INSERT INTO interfaces (id, device_id, name, mac_address)
-            VALUES ($1, $2, 'eth0', $3)
-            "#,
-            interface_id,
-            new_id,
-            mac as _
-        )
-        .execute(&mut *tx)
-        .await?;
+        let interface = interfaces::ActiveModel {
+            id: Set(interface_id),
+            device_id: Set(new_id),
+            name: Set("eth0".to_string()),
+            mac_address: Set(mac),
+            ..Default::default()
+        };
+        interface.insert(&txn).await?;
 
-        tx.commit().await?;
+        txn.commit().await?;
 
         Ok(new_id)
     }
@@ -95,56 +123,58 @@ impl Db {
         &self,
         id: Uuid,
         params: CreateDevicePayload,
-    ) -> Result<bool, sqlx::Error> {
-        let mut tx = self.pool.begin().await?;
+    ) -> Result<bool, anyhow::Error> {
+        let txn = self.conn.begin().await?;
 
-        let result = sqlx::query!(
-            r#"
-            UPDATE devices
-            SET parent_device_id = $1, hostname = $2, type = $3, os_info = $4, cpu_cores = $5, ram_gb = $6, storage_gb = $7
-            WHERE id = $8
-            "#,
-            params.parent_device_id,
-            params.hostname,
-            params.device_type,
-            params.os_info,
-            params.cpu_cores,
-            params.ram_gb,
-            params.storage_gb,
-            id
-        )
-        .execute(&mut *tx)
-        .await?;
+        let device_model = match devices::Entity::find_by_id(id).one(&txn).await? {
+            Some(d) => d,
+            None => return Ok(false),
+        };
 
-        let mac = params
-            .mac_address
-            .as_deref()
-            .filter(|s| !s.is_empty())
-            .and_then(|s| s.parse::<mac_address::MacAddress>().ok());
+        let mut device: devices::ActiveModel = device_model.into();
 
-        if let Some(m) = mac {
-            sqlx::query!(
-                r#"
-                UPDATE interfaces
-                SET mac_address = $1
-                WHERE device_id = $2 AND name = 'eth0'
-                "#,
-                m as _,
-                id
-            )
-            .execute(&mut *tx)
-            .await?;
+        device.parent_device_id = Set(params.parent_device_id);
+        device.hostname = Set(params.hostname);
+        device.r#type = Set(params.device_type);
+        device.os_info = Set(params.os_info);
+        device.cpu_cores = Set(params.cpu_cores);
+        device.ram_gb = Set(params.ram_gb);
+        device.storage_gb = Set(params.storage_gb);
+
+        device.update(&txn).await?;
+
+        // Update eth0 mac if provided
+        if let Some(mac) = params.mac_address {
+            // Try find existing eth0
+            let eth0 = interfaces::Entity::find()
+                .filter(interfaces::Column::DeviceId.eq(id))
+                .filter(interfaces::Column::Name.eq("eth0"))
+                .one(&txn) // use &txn here
+                .await?;
+
+            if let Some(eth0_model) = eth0 {
+                let mut eth0: interfaces::ActiveModel = eth0_model.into();
+                eth0.mac_address = Set(Some(mac));
+                eth0.update(&txn).await?;
+            } else if !mac.is_empty() {
+                // create if missing?
+                let interface = interfaces::ActiveModel {
+                    id: Set(Uuid::now_v7()),
+                    device_id: Set(id),
+                    name: Set("eth0".to_string()),
+                    mac_address: Set(Some(mac)),
+                    ..Default::default()
+                };
+                interface.insert(&txn).await?;
+            }
         }
 
-        tx.commit().await?;
-
-        Ok(result.rows_affected() > 0)
+        txn.commit().await?;
+        Ok(true)
     }
 
-    pub async fn delete_device(&self, id: Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM devices WHERE id = $1", id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
+    pub async fn delete_device(&self, id: Uuid) -> Result<bool, anyhow::Error> {
+        let res = devices::Entity::delete_by_id(id).exec(&self.conn).await?;
+        Ok(res.rows_affected > 0)
     }
 }

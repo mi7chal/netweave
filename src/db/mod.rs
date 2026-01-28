@@ -37,13 +37,16 @@ pub struct CreateIpParams {
 /// It holds pool and basically is created just to implement methods inside specific files.
 ///
 /// It serves as a repository pattern to organize database operations.
+use sea_orm::{DatabaseConnection, SqlxPostgresConnector};
+
 #[derive(Clone)]
 pub struct Db {
-    pub(crate) pool: PgPool,
+    pub conn: DatabaseConnection,
 }
 
 impl Db {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
+        Self { conn }
     }
 }

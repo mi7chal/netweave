@@ -1,23 +1,34 @@
-use crate::AppState;
-use crate::auth::{self, AUTH_SESSION_KEY, AuthUser};
+use crate::auth::{self, AuthUser, AUTH_SESSION_KEY};
 use crate::handlers;
+use crate::AppState;
 use axum::{
-    Router,
     extract::Request,
     middleware::{self, Next},
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
+    Router,
 };
-use tower_http::services::ServeDir;
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 
 async fn auth_middleware(session: Session, mut request: Request, next: Next) -> Response {
     let user: Option<AuthUser> = session.get(AUTH_SESSION_KEY).await.unwrap_or(None);
+    
+    // DEV MODE BYPASS: If no user, inject a dummy admin for development
+    let user = if user.is_none() && cfg!(debug_assertions) {
+        Some(AuthUser {
+            id: uuid::Uuid::nil(),
+            username: "dev_admin".to_string(),
+            role: "ADMIN".to_string(),
+        })
+    } else {
+        user
+    };
+
     if let Some(user) = user {
         request.extensions_mut().insert(user);
         next.run(request).await
     } else {
-        Redirect::to("/login").into_response()
+        (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response()
     }
 }
 
@@ -31,7 +42,11 @@ async fn require_admin(request: Request, next: Next) -> Response {
     if is_admin {
         next.run(request).await
     } else {
-        (axum::http::StatusCode::FORBIDDEN, "Forbidden").into_response()
+        (
+            axum::http::StatusCode::FORBIDDEN,
+            "Forbidden: Admin access required",
+        )
+            .into_response()
     }
 }
 
@@ -41,83 +56,91 @@ pub fn create_router(state: AppState) -> Router {
         .with_secure(false)
         .with_same_site(tower_sessions::cookie::SameSite::Lax)
         .with_expiry(Expiry::OnInactivity(
-            tower_sessions::cookie::time::Duration::hours(1),
+            tower_sessions::cookie::time::Duration::hours(1), // 1 hour session
         ));
 
-    let common_routes = Router::new().route("/", get(handlers::show_dashboard));
+    // Public/Viewer Routes (Authenticated)
+    let viewer_routes = Router::new()
+        .route("/dashboard", get(handlers::show_dashboard))
+        .route("/services", get(handlers::list_services))
+        .route("/services/:id", get(handlers::get_service));
 
+    // Admin Routes (Authenticated + Admin Role)
     let admin_routes = Router::new()
+        // Service Management
+        .route("/services", post(handlers::create_service))
+        .route(
+            "/services/:id",
+            post(handlers::update_service).delete(handlers::delete_service),
+        )
         // Devices
         .route(
             "/devices",
             get(handlers::list_devices).post(handlers::create_device),
         )
-        .route("/devices/new", get(handlers::show_add_device_form))
         .route(
-            "/devices/{id}",
-            get(handlers::show_device_details).delete(handlers::delete_device),
+            "/devices/:id",
+            get(handlers::get_device)
+                .put(handlers::update_device)
+                .delete(handlers::delete_device),
         )
+        // Device Interfaces
+        .route("/devices/:id/interfaces", post(handlers::create_interface))
         .route(
-            "/devices/{id}/edit",
-            get(handlers::show_edit_device_form).post(handlers::update_device),
-        )
-        // Interfaces
-        .route(
-            "/devices/{id}/interfaces/new",
-            get(handlers::show_add_interface_form),
-        )
-        .route("/devices/{id}/interfaces", post(handlers::create_interface))
-        .route(
-            "/devices/{device_id}/interfaces/{interface_id}",
+            "/devices/:device_id/interfaces/:interface_id",
             delete(handlers::delete_interface),
         )
         // Device IPs
-        .route("/devices/{id}/ips/new", get(handlers::show_assign_ip_form))
-        .route("/devices/{id}/ips", post(handlers::assign_ip))
+        .route("/devices/:id/ips", get(handlers::list_device_ips))
+        .route("/devices/:id/ips", post(handlers::assign_ip))
         .route(
-            "/devices/{device_id}/ips/{ip_id}",
+            "/devices/:device_id/ips/:ip_id",
             delete(handlers::delete_ip_assignment),
-        )
-        // Services
-        .route("/services/new", get(handlers::show_add_service_form))
-        .route("/services", post(handlers::create_service))
-        .route("/services/{id}", delete(handlers::delete_service))
-        .route(
-            "/services/{id}/edit",
-            get(handlers::show_edit_service_form).post(handlers::update_service),
         )
         // Networks
         .route(
             "/networks",
             get(handlers::list_networks).post(handlers::create_network),
         )
-        .route("/networks/new", get(handlers::show_add_network_form))
         .route(
-            "/networks/{id}",
-            get(handlers::show_network_details).delete(handlers::delete_network),
+            "/networks/:id",
+            get(handlers::get_network)
+                .put(handlers::update_network)
+                .delete(handlers::delete_network),
+        )
+        // Network IPs
+        .route(
+            "/networks/:id/ips",
+            get(handlers::list_network_ips).post(handlers::create_network_ip),
+        )
+        // Integrations
+        .route(
+            "/integrations",
+            get(handlers::integrations::list_integrations)
+                .post(handlers::integrations::create_integration),
         )
         .route(
-            "/networks/{id}/edit",
-            get(handlers::show_edit_network_form).post(handlers::update_network),
+            "/integrations/:id/sync",
+            post(handlers::integrations::trigger_sync),
         )
         .route(
-            "/networks/{id}/ips/new",
-            get(handlers::show_add_network_ip_form),
+            "/integrations/:id",
+            delete(handlers::integrations::delete_integration),
         )
-        .route("/networks/{id}/ips", post(handlers::create_network_ip))
         .route_layer(middleware::from_fn(require_admin));
 
-    let protected_routes = Router::new()
-        .merge(common_routes)
+    // Combine API routes
+    let api_routes = Router::new()
+        .merge(viewer_routes)
         .merge(admin_routes)
         .route_layer(middleware::from_fn(auth_middleware));
 
+    // Auth Routes (Public)
+    let auth_routes = auth::routes(state.clone());
+
     Router::new()
-        .merge(protected_routes)
-        .merge(auth::routes(state.clone()))
-        // Static files
-        .nest_service("/assets", ServeDir::new("assets"))
+        .nest("/api", api_routes)
+        .nest("/auth", auth_routes)
         .layer(session_layer)
-        // Register state (database)
         .with_state(state)
 }
