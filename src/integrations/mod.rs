@@ -1,11 +1,13 @@
 use crate::AppState;
-use crate::entities::{integrations, services};
+use crate::entities::{integrations, services, devices, interfaces, ip_addresses, networks};
 use crate::models::{CreateServicePayload, CreateDevicePayload};
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter, ModelTrait, QuerySelect};
+use ipnetwork::IpNetwork;
 use tokio::time::{sleep, Duration};
 use chrono::Utc;
 use async_trait::async_trait;
 use anyhow::Result;
+use sea_orm::sea_query::{Expr, Alias};
 
 pub mod adguard;
 
@@ -73,33 +75,127 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
         _ => return Err(anyhow::anyhow!("Unknown provider type: {}", model.provider_type)),
     };
 
-    // 1. Sync Services (DNS Rewrites)
-    let fetched_services = provider.fetch_services().await?;
-    for payload in fetched_services {
-        // Upsert logic: Check if service exists by base_url or name
-        // For simplicity, we just create if not exists for now, or match on name
-        let existing = services::Entity::find()
-            .filter(services::Column::Name.eq(&payload.name))
+    // 1. Sync Services (DNS Rewrites) - Removed as per user request (logic kept as no-op in adguard)
+    let _ = provider.fetch_services().await?; 
+    
+    // 2. Sync Devices (DHCP Leases)
+    let fetched_devices = provider.fetch_devices().await?;
+    
+    // Cache networks for IP matching
+    // Use db abstraction which handles casting
+    let all_networks = state.db.list_networks().await?;
+
+    for payload in fetched_devices {
+        // We need a MAC to interact with our Device model effectively for integrations
+        let mac = match &payload.mac_address {
+            Some(m) => m.to_lowercase(),
+            None => continue, // Skip devices without MAC for now
+        };
+
+        // Check if Interface exists (Primary definition of device identity here)
+        // Check if Interface exists (Primary definition of device identity here)
+        let existing_interface = interfaces::Entity::find()
+            .select_only()
+            .column(interfaces::Column::Id)
+            .column(interfaces::Column::DeviceId)
+            .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+            .into_tuple::<(uuid::Uuid, uuid::Uuid)>()
             .one(&state.conn)
             .await?;
 
-        if existing.is_none() {
-            let new_service = services::ActiveModel {
-                id: Set(uuid::Uuid::now_v7()),
-                name: Set(payload.name),
-                base_url: Set(payload.base_url),
-                is_public: Set(Some(payload.is_public)),
-                monitor_interval_seconds: Set(Some(300)), // Default 5 mins
-                ..Default::default()
-            };
-            new_service.insert(&state.conn).await?;
+        let device_id = match existing_interface {
+            Some((interface_id, device_id)) => {
+                // Update Device info if needed
+                if let Some(device) = devices::Entity::find_by_id(device_id).one(&state.conn).await? {
+                    let mut active: devices::ActiveModel = device.into();
+                    if active.hostname.clone().unwrap() != payload.hostname {
+                         active.hostname = Set(payload.hostname.clone());
+                         active.update(&state.conn).await.ok();
+                    }
+                    device_id
+                } else {
+                    // Orphaned interface? Should not happen with foreign keys, but just in case
+                    continue; 
+                }
+            },
+            None => {
+                // Create New Device
+                let new_device_id = uuid::Uuid::now_v7();
+                let new_device = devices::ActiveModel {
+                    id: Set(new_device_id),
+                    hostname: Set(payload.hostname.clone()),
+                    r#type: Set("OTHER".to_string()), 
+                    created_at: Set(Utc::now().into()),
+                    ..Default::default()
+                };
+                new_device.insert(&state.conn).await?;
+
+                // Create Interface using DB method (handles MAC types)
+                state.db.create_interface(new_device_id, crate::models::CreateInterfacePayload {
+                    name: "eth0".to_string(),
+                    mac_address: Some(mac.clone()),
+                    interface_type: "ethernet".to_string(),
+                }).await?;
+                
+                new_device_id
+            }
+        };
+
+        // Handle IP Address
+        if let Some(ip_str) = &payload.ip_address {
+             // Find matching network
+             let matched_network = all_networks.iter().find(|n| {
+                 if let Ok(ip) = ip_str.parse::<std::net::IpAddr>() {
+                     return n.cidr.contains(ip);
+                 }
+                 false
+             });
+
+             if let Some(network) = matched_network {
+                 // Check if IP assignment exists
+                 // IP address is INET, so string comparison might fail if not casted? 
+                 // Usually INET = text works in Postgres if text is valid IP, but strict operators might fail.
+                 // Let's cast IP to INET just to be safe.
+
+                 
+                 let existing_ip = ip_addresses::Entity::find()
+                    .select_only()
+                    .column(ip_addresses::Column::Id)
+                    .filter(Expr::col(ip_addresses::Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
+                    .into_tuple::<uuid::Uuid>()
+                    .one(&state.conn)
+                    .await?;
+
+                 if existing_ip.is_none() {
+                     // Get interface ID again (could have been created)
+                     let interface_id = interfaces::Entity::find()
+                        .select_only()
+                        .column(interfaces::Column::Id)
+                        .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+                        .into_tuple::<uuid::Uuid>()
+                        .one(&state.conn)
+                        .await?
+                        .ok_or_else(|| anyhow::anyhow!("Interface not found after creation/check"))?;
+
+                     use crate::db::CreateIpParams;
+                     use crate::models::IpStatus;
+                     use std::str::FromStr;
+
+                     state.db.create_ip(CreateIpParams {
+                         network_id: network.id,
+                         device_id: Some(device_id),
+                         ip_address: ip_str.parse().unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                         mac_address: mac_address::MacAddress::from_str(&mac).ok(),
+                         is_static: false,
+                         status: IpStatus::Active,
+                         description: Some("Synced from Integration".to_string()),
+                     }).await?;
+                 }
+             } else {
+                 tracing::warn!("Skipping IP sync for {}: No matching network found for IP {}", payload.hostname, ip_str);
+             }
         }
     }
-    
-    // 2. Sync Devices (DHCP Leases)
-    let _fetched_devices = provider.fetch_devices().await?;
-    // Placeholder for device syncing - assuming we will implement later or mapping to devices entity
-    // If we want to implement it we need to import devices entity
     
     Ok(())
 }

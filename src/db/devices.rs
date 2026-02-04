@@ -2,6 +2,8 @@ use super::Db;
 use crate::entities::{devices, interfaces};
 use crate::models::{CreateDevicePayload, Device, DeviceType};
 use sea_orm::*;
+use sea_orm::{QuerySelect, QueryOrder};
+use sea_orm::sea_query::{Expr, Alias};
 use uuid::Uuid;
 
 impl Db {
@@ -105,14 +107,25 @@ impl Db {
         let interface_id = Uuid::now_v7();
         let mac = params.mac_address;
 
-        let interface = interfaces::ActiveModel {
-            id: Set(interface_id),
-            device_id: Set(new_id),
-            name: Set("eth0".to_string()),
-            mac_address: Set(mac),
-            ..Default::default()
-        };
-        interface.insert(&txn).await?;
+        let sql = r#"
+            INSERT INTO interfaces (id, device_id, name, mac_address, type, created_at)
+            VALUES ($1, $2, $3, $4::macaddr, $5, $6)
+        "#;
+
+        let stmt = Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            sql,
+            vec![
+                interface_id.into(),
+                new_id.into(),
+                "eth0".into(),
+                mac.map(|m| m.to_string()).into(),
+                "ethernet".into(),
+                chrono::Utc::now().into(),
+            ],
+        );
+
+        txn.execute(stmt).await?;
 
         txn.commit().await?;
 
@@ -147,8 +160,16 @@ impl Db {
         if let Some(mac) = params.mac_address {
             // Try find existing eth0
             let eth0 = interfaces::Entity::find()
+                .select_only()
+                .column(interfaces::Column::Id)
+                .column(interfaces::Column::DeviceId)
+                .column(interfaces::Column::Name)
+                .column_as(Expr::col(interfaces::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
+                .column(interfaces::Column::Type)
+                .column(interfaces::Column::CreatedAt)
                 .filter(interfaces::Column::DeviceId.eq(id))
                 .filter(interfaces::Column::Name.eq("eth0"))
+                .into_model::<interfaces::Model>()
                 .one(&txn) // use &txn here
                 .await?;
 

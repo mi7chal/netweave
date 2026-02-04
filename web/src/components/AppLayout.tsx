@@ -1,5 +1,5 @@
-import { Button, Card, Spacer, Link as HeroLink } from "@heroui/react";
-import { LayoutDashboard, Network, Server, Settings, Shield, Activity, Globe } from "lucide-react";
+import { Button, Card, Spacer } from "@heroui/react";
+import { LayoutDashboard, Network, Server, Settings, Activity, Globe } from "lucide-react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -22,7 +22,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
                 <nav className="flex flex-1 flex-col gap-2">
                     <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" href="/dashboard" active={pathname === "/dashboard"} />
                     <NavItem icon={<Globe size={20} />} label="Integrations" href="/integrations" active={pathname === "/integrations"} />
-                    <NavItem icon={<Network size={20} />} label="IPAM" href="/ipam" active={pathname === "/ipam"} />
+                    <NavItem icon={<Activity size={20} />} label="Services" href="/services" active={pathname === "/services"} />
+                    <NavItem icon={<Network size={20} />} label="Networks" href="/networks" active={pathname === "/networks"} />
                     <NavItem icon={<Server size={20} />} label="Devices" href="/devices" active={pathname === "/devices"} />
                 </nav>
 

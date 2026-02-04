@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 import { Integrations } from './pages/Integrations';
+import { Services } from './pages/Services';
+import { Networks } from './pages/Networks';
+import { Devices } from './pages/Devices';
 
 function App() {
   return (
@@ -8,6 +11,9 @@ function App() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/integrations" element={<Integrations />} />
+      <Route path="/services" element={<Services />} />
+      <Route path="/networks" element={<Networks />} />
+      <Route path="/devices" element={<Devices />} />
     </Routes>
   )
 }

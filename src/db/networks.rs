@@ -2,12 +2,24 @@ use super::{CreateNetworkParams, Db};
 use crate::entities::networks;
 use crate::models::Network;
 use sea_orm::*;
+use sea_orm::{QuerySelect, QueryOrder}; 
+use sea_orm::sea_query::{Expr, Alias};
 use uuid::Uuid;
 
 impl Db {
     pub async fn list_networks(&self) -> Result<Vec<Network>, anyhow::Error> {
         let networks_models = networks::Entity::find()
+            .select_only()
+            .column(networks::Column::Id)
+            .column(networks::Column::Name)
+            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "cidr")
+            .column(networks::Column::VlanId)
+            .column_as(Expr::col(networks::Column::Gateway).cast_as(Alias::new("text")), "gateway")
+            // Casting INET[] to text[] for Vec<String> decoding
+            .column_as(Expr::col(networks::Column::DnsServers).cast_as(Alias::new("text[]")), "dns_servers")
+            .column(networks::Column::Description)
             .order_by_asc(networks::Column::Name)
+            .into_model::<networks::Model>()
             .all(&self.conn)
             .await?;
 
@@ -17,12 +29,16 @@ impl Db {
             result.push(Network {
                 id: n.id,
                 name: n.name,
-                cidr: n.cidr.parse()?, // potential error if DB has bad data
+                cidr: n.cidr.parse()?, 
                 vlan_id: n.vlan_id,
-                gateway: n.gateway.as_deref().map(|s| s.parse()).transpose()?,
+                gateway: n.gateway
+                    .as_deref()
+                    .and_then(|s| s.split('/').next())
+                    .map(|s| s.parse())
+                    .transpose()?,
                 dns_servers: n
                     .dns_servers
-                    .map(|v| v.iter().filter_map(|s| s.parse().ok()).collect()),
+                    .map(|v| v.iter().filter_map(|s| s.split('/').next()?.parse().ok()).collect()),
                 description: n.description,
             });
         }
@@ -30,7 +46,18 @@ impl Db {
     }
 
     pub async fn get_network(&self, id: Uuid) -> Result<Option<Network>, anyhow::Error> {
-        let network_model = networks::Entity::find_by_id(id).one(&self.conn).await?;
+        let network_model = networks::Entity::find_by_id(id)
+            .select_only()
+            .column(networks::Column::Id)
+            .column(networks::Column::Name)
+            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "cidr")
+            .column(networks::Column::VlanId)
+            .column_as(Expr::col(networks::Column::Gateway).cast_as(Alias::new("text")), "gateway")
+            .column_as(Expr::col(networks::Column::DnsServers).cast_as(Alias::new("text[]")), "dns_servers")
+            .column(networks::Column::Description)
+            .into_model::<networks::Model>()
+            .one(&self.conn)
+            .await?;
 
         if let Some(n) = network_model {
             Ok(Some(Network {
@@ -38,10 +65,14 @@ impl Db {
                 name: n.name,
                 cidr: n.cidr.parse()?,
                 vlan_id: n.vlan_id,
-                gateway: n.gateway.as_deref().map(|s| s.parse()).transpose()?,
+                gateway: n.gateway
+                    .as_deref()
+                    .and_then(|s| s.split('/').next())
+                    .map(|s| s.parse())
+                    .transpose()?,
                 dns_servers: n
                     .dns_servers
-                    .map(|v| v.iter().filter_map(|s| s.parse().ok()).collect()),
+                    .map(|v| v.iter().filter_map(|s| s.split('/').next()?.parse().ok()).collect()),
                 description: n.description,
             }))
         } else {

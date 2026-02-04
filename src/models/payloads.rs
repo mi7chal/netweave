@@ -71,8 +71,8 @@ pub struct CreateServicePayload {
     pub base_url: String,
     #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]
     pub device_id: Option<Uuid>,
-    #[serde(default, deserialize_with = "deserialize_checkbox")]
-    pub is_public: bool, // Changed from Option<bool>? Checker said it expects field `is_public`
+    #[serde(default)]
+    pub is_public: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone)]

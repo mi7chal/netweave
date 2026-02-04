@@ -19,11 +19,7 @@ struct AdGuardStatus {
     version: String,
 }
 
-#[derive(Deserialize)]
-struct DnsRewrite {
-    domain: String,
-    answer: String,
-}
+
 
 #[derive(Deserialize)]
 struct DhcpLease {
@@ -119,28 +115,8 @@ impl IntegrationProvider for AdGuardIntegration {
     }
 
     async fn fetch_services(&self) -> Result<Vec<CreateServicePayload>> {
-        self.ensure_authenticated().await?;
-        let url = format!("{}/control/rewrite/list", self.url);
-        let res = self.client.get(&url).send().await?;
-        
-        if !res.status().is_success() {
-            return Err(anyhow::anyhow!("AdGuard fetch_services failed: {}", res.status()));
-        }
-
-        let text = res.text().await?;
-        let rewrites: Vec<DnsRewrite> = serde_json::from_str(&text)
-            .map_err(|e| anyhow::anyhow!("Failed to parse DNS rewrites: {} (Body: {})", e, text))?;
-
-        let services = rewrites.into_iter()
-            .map(|r| CreateServicePayload {
-                name: r.domain.clone(),
-                base_url: format!("http://{}", r.domain), // Guessing scheme
-                device_id: None,
-                is_public: false, 
-            })
-            .collect();
-
-        Ok(services)
+        // DNS fetching removed as per user request
+        Ok(Vec::new())
     }
 
     async fn fetch_devices(&self) -> Result<Vec<CreateDevicePayload>> {

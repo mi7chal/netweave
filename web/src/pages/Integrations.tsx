@@ -70,9 +70,17 @@ export const Integrations = () => {
                                     <p className="text-small text-default-500 capitalize">{int.provider_type}</p>
                                 </div>
                             </div>
-                            <Chip color={int.status === "ACTIVE" ? "success" : "warning"} variant="flat" size="sm">
-                                {int.status || "PENDING"}
-                            </Chip>
+                            <div className="flex gap-2">
+                                {int.status.startsWith("ERROR") ? (
+                                    <div title={int.status}>
+                                        <Chip color="danger" variant="flat" size="sm" className="cursor-help">ERROR</Chip>
+                                    </div>
+                                ) : (
+                                    <Chip color={int.status === "ACTIVE" ? "success" : "warning"} variant="flat" size="sm">
+                                        {int.status || "PENDING"}
+                                    </Chip>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardBody className="pt-0">
                             <div className="flex justify-between items-center mt-2">

@@ -2,6 +2,8 @@ use super::{CreateIpParams, Db};
 use crate::entities::{devices, interfaces, ip_addresses, networks};
 use crate::models::{DeviceIpView, IpStatus, NetworkIpView};
 use sea_orm::*;
+use sea_orm::{QuerySelect, QueryOrder};
+use sea_orm::sea_query::{Expr, Alias};
 use uuid::Uuid;
 
 impl Db {
@@ -9,11 +11,14 @@ impl Db {
         // Resolve Interface ID if device_id is provided
         let interface_id = if let Some(did) = params.device_id {
             let iface = interfaces::Entity::find()
+                .select_only()
+                .column(interfaces::Column::Id)
                 .filter(interfaces::Column::DeviceId.eq(did))
                 .order_by_asc(interfaces::Column::Name)
+                .into_tuple::<Uuid>()
                 .one(&self.conn)
                 .await?;
-            iface.map(|i| i.id)
+            iface
         } else {
             None
         };
@@ -33,7 +38,7 @@ impl Db {
                 id, interface_id, network_id, ip_address, mac_address,
                 is_static, status, description
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4::inet, $5::macaddr, $6, $7, $8)
             ON CONFLICT (network_id, ip_address)
             DO UPDATE SET
                 interface_id = EXCLUDED.interface_id,
@@ -76,12 +81,12 @@ impl Db {
             .column(ip_addresses::Column::Id)
             .column_as(interfaces::Column::DeviceId, "device_id")
             .column_as(interfaces::Column::Name, "interface_name")
-            .column_as(ip_addresses::Column::IpAddress, "ip_address")
-            .column(ip_addresses::Column::MacAddress)
+            .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+            .column_as(Expr::col(ip_addresses::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
             .column(ip_addresses::Column::IsStatic)
             .column(ip_addresses::Column::Status)
             .column_as(networks::Column::Name, "network_name")
-            .column_as(networks::Column::Cidr, "network_cidr")
+            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "network_cidr")
             .build(backend);
 
         let res = self.conn.query_all(query).await?;
@@ -106,6 +111,9 @@ impl Db {
                 device_id: row.try_get("", "device_id")?,
                 interface_name: row.try_get("", "interface_name")?,
                 ip_address: ip_str
+                    .split('/')
+                    .next()
+                    .unwrap_or("")
                     .parse()
                     .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
                 mac_address: mac_str.and_then(|s| s.parse().ok()), // parse Option<String> -> Option<MacAddress>
@@ -137,8 +145,8 @@ impl Db {
             .order_by_asc(ip_addresses::Column::IpAddress)
             .select_only()
             .column(ip_addresses::Column::Id)
-            .column_as(ip_addresses::Column::IpAddress, "ip_address")
-            .column(ip_addresses::Column::MacAddress)
+            .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+            .column_as(Expr::col(ip_addresses::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
             .column(ip_addresses::Column::Status)
             .column(ip_addresses::Column::Description)
             .column_as(devices::Column::Hostname, "device_hostname")
@@ -164,6 +172,9 @@ impl Db {
             views.push(NetworkIpView {
                 id: row.try_get("", "id")?,
                 ip_address: ip_str
+                    .split('/')
+                    .next()
+                    .unwrap_or("")
                     .parse()
                     .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
                 mac_address: mac_str.and_then(|s| s.parse().ok()),
