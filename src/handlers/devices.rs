@@ -49,7 +49,7 @@ pub async fn get_device(
 ) -> AppResult<impl IntoResponse> {
     let device = state
         .db
-        .get_device(id)
+        .get_device_details(id)
         .await
         .map_err(internal_error)?
         .ok_or((
@@ -59,8 +59,6 @@ pub async fn get_device(
             }),
         ))?;
 
-    // We might want to include interfaces/ips in the response or use a separate endpoint
-    // For now returning the base device
     json_response(device)
 }
 

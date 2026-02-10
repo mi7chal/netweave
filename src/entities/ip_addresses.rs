@@ -1,3 +1,4 @@
+use crate::models::types::MacAddress;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +10,7 @@ pub struct Model {
     pub network_id: Uuid,
     pub interface_id: Option<Uuid>,
     pub ip_address: String,
-    pub mac_address: Option<String>,
+    pub mac_address: Option<MacAddress>,
     pub status: String,
     pub description: Option<String>,
     pub is_static: bool,

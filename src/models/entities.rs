@@ -96,3 +96,28 @@ pub struct NetworkIpView {
     pub status: IpStatus,
     pub description: Option<String>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct DeviceListView {
+    pub id: Uuid,
+    pub hostname: String,
+    pub device_type: DeviceType,
+    pub os_info: Option<String>,
+    pub created_at: DateTime<Utc>,
+    // Flatted fields for list view
+    pub primary_ip: Option<IpAddr>,
+    pub mac_address: Option<MacAddress>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceDetails {
+    #[serde(flatten)]
+    pub device: Device,
+    pub interfaces: Vec<InterfaceWithIps>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InterfaceWithIps {
+    #[serde(flatten)]
+    pub interface: Interface,
+    pub ips: Vec<IpAddress>,
+}

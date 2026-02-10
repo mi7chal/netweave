@@ -92,6 +92,13 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
             None => continue, // Skip devices without MAC for now
         };
 
+        // Skip IPv6 addresses as per configuration/user request
+        if let Some(ip_str) = &payload.ip_address {
+             if let Ok(std::net::IpAddr::V6(_)) = ip_str.parse::<std::net::IpAddr>() {
+                 continue;
+             }
+        }
+
         // Check if Interface exists (Primary definition of device identity here)
         // Check if Interface exists (Primary definition of device identity here)
         let existing_interface = interfaces::Entity::find()
@@ -104,7 +111,7 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
             .await?;
 
         let device_id = match existing_interface {
-            Some((interface_id, device_id)) => {
+            Some((_interface_id, device_id)) => {
                 // Update Device info if needed
                 if let Some(device) = devices::Entity::find_by_id(device_id).one(&state.conn).await? {
                     let mut active: devices::ActiveModel = device.into();
@@ -131,6 +138,7 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
                 new_device.insert(&state.conn).await?;
 
                 // Create Interface using DB method (handles MAC types)
+                use std::str::FromStr;
                 state.db.create_interface(new_device_id, crate::models::CreateInterfacePayload {
                     name: "eth0".to_string(),
                     mac_address: Some(mac.clone()),
@@ -158,15 +166,21 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
                  // Let's cast IP to INET just to be safe.
 
                  
-                 let existing_ip = ip_addresses::Entity::find()
+                  let existing_ip = ip_addresses::Entity::find()
                     .select_only()
                     .column(ip_addresses::Column::Id)
+                    .column(ip_addresses::Column::InterfaceId)
                     .filter(Expr::col(ip_addresses::Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
-                    .into_tuple::<uuid::Uuid>()
+                    .into_tuple::<(uuid::Uuid, Option<uuid::Uuid>)>()
                     .one(&state.conn)
                     .await?;
 
-                 if existing_ip.is_none() {
+                 let should_create = match existing_ip {
+                     None => true,
+                     Some((_, interface_id)) => interface_id.is_none(),
+                 };
+
+                 if should_create {
                      // Get interface ID again (could have been created)
                      let interface_id = interfaces::Entity::find()
                         .select_only()
@@ -184,6 +198,7 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
                      state.db.create_ip(CreateIpParams {
                          network_id: network.id,
                          device_id: Some(device_id),
+                         interface_id: Some(interface_id),
                          ip_address: ip_str.parse().unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
                          mac_address: mac_address::MacAddress::from_str(&mac).ok(),
                          is_static: false,

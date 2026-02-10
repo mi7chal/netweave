@@ -1,40 +1,56 @@
-import { Button, Card, CardBody, Chip, useDisclosure, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
-import { Plus, Trash2, Search, Edit2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Plus, Trash2, Search, Edit2, Server, Monitor, Laptop, Router, Network, Wifi, Container } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AppLayout } from "../components/AppLayout";
+import { AppLayout } from "../layouts/AppLayout";
+import { fetchApi } from "@/lib/api-client";
+import { type DeviceListView, DeviceType, type CreateDevicePayload } from "@/types/api";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-interface Device {
-    id: string;
-    hostname: string;
-    device_type: string;
-    ip_address?: string;
-    mac_address?: string;
-    owner?: string;
-    cpu_cores?: number;
-    ram_gb?: number;
-    storage_gb?: number;
-    os_info?: string;
-}
 
 export const Devices = () => {
-    const [devices, setDevices] = useState<Device[]>([]);
+    const navigate = useNavigate();
+    const [devices, setDevices] = useState<DeviceListView[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
-    const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     // Form State
-    const [formData, setFormData] = useState<Partial<Device>>({});
+    const [formData, setFormData] = useState<Partial<CreateDevicePayload>>({});
 
     const fetchDevices = async (query = "") => {
         setIsLoading(true);
         try {
             const url = query ? `/api/devices?q=${query}` : '/api/devices';
-            const res = await fetch(url);
-            if (res.ok) {
-                const data = await res.json();
-                setDevices(data);
-            }
+            const data = await fetchApi<DeviceListView[]>(url);
+            setDevices(data);
         } catch (e) {
             console.error(e);
         } finally {
@@ -49,177 +65,205 @@ export const Devices = () => {
         return () => clearTimeout(timeout);
     }, [search]);
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
         if (!confirm("Are you sure you want to delete this device?")) return;
         try {
-            await fetch(`/api/devices/${id}`, { method: 'DELETE' });
+            await fetchApi(`/api/devices/${id}`, { method: 'DELETE' });
+            toast.success("Device deleted");
             fetchDevices(search);
         } catch (e) {
             console.error(e);
         }
     };
 
-    const handleSave = async (onClose: () => void) => {
+    const handleSave = async () => {
         try {
-            const method = selectedDevice ? 'PUT' : 'POST';
-            const url = selectedDevice ? `/api/devices/${selectedDevice.id}` : '/api/devices';
+            // Only create for now from this dialog, editing happens in details page or we can add edit here too 
+            // but for now let's assume this is mostly for creation or basic edit
+            // Simplified: If it has an ID we can't edit it easily with CreateDevicePayload unless we map it back
+            // For now, let's treat this dialog as "Quick Create"
 
-            const res = await fetch(url, {
-                method,
+            await fetchApi('/api/devices', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
-            if (res.ok) {
-                fetchDevices(search);
-                onClose();
-            } else {
-                alert("Failed to save device");
-            }
+            toast.success("Device created");
+            fetchDevices(search);
+            setIsDialogOpen(false);
         } catch (e) {
             console.error(e);
         }
     };
 
-    const openEdit = (device: Device) => {
-        setSelectedDevice(device);
-        setFormData(device);
-        onOpen();
+    const openCreate = () => {
+        setFormData({ device_type: DeviceType.Other });
+        setIsDialogOpen(true);
     };
 
-    const openCreate = () => {
-        setSelectedDevice(null);
-        setFormData({ device_type: "Server" });
-        onOpen();
-    };
+    const getDeviceIcon = (type: DeviceType) => {
+        switch (type) {
+            case DeviceType.Physical: return <Server className="h-4 w-4" />;
+            case DeviceType.Vm: return <Monitor className="h-4 w-4" />;
+            case DeviceType.Lxc: return <Container className="h-4 w-4" />;
+            case DeviceType.Container: return <Container className="h-4 w-4" />;
+            case DeviceType.Switch: return <Network className="h-4 w-4" />;
+            case DeviceType.Router: return <Router className="h-4 w-4" />;
+            case DeviceType.Ap: return <Wifi className="h-4 w-4" />;
+            default: return <Laptop className="h-4 w-4" />;
+        }
+    }
 
     return (
         <AppLayout>
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Devices</h1>
-                    <p className="text-default-500">Manage infrastructure hardware and virtual machines.</p>
+            <div className="flex flex-col space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Devices</h1>
+                        <p className="text-muted-foreground">Manage infrastructure hardware and virtual machines.</p>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto items-center">
+                        <div className="relative w-full md:w-64">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search devices..."
+                                className="pl-8"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <Button onClick={openCreate}>
+                            <Plus className="h-4 w-4 mr-2" /> Add Device
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Input
-                        placeholder="Search devices..."
-                        startContent={<Search size={18} />}
-                        value={search}
-                        onValueChange={setSearch}
-                        className="w-full md:w-64"
-                    />
-                    <Button color="primary" variant="shadow" startContent={<Plus size={18} />} onPress={openCreate}>
-                        Add Device
-                    </Button>
-                </div>
-            </div>
 
-            <Card className="bg-default-50 border border-white/5">
-                <CardBody>
-                    <Table aria-label="Devices table" removeWrapper color="primary" selectionMode="none">
-                        <TableHeader>
-                            <TableColumn>HOSTNAME</TableColumn>
-                            <TableColumn>TYPE</TableColumn>
-                            <TableColumn>IP ADDRESS</TableColumn>
-                            <TableColumn>MAC ADDRESS</TableColumn>
-                            <TableColumn>OS</TableColumn>
-                            <TableColumn align="end">ACTIONS</TableColumn>
-                        </TableHeader>
-                        <TableBody emptyContent={"No devices found."} items={devices} isLoading={isLoading}>
-                            {(item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-bold">{item.hostname}</TableCell>
-                                    <TableCell>
-                                        <Chip size="sm" variant="flat" color="secondary">{item.device_type}</Chip>
-                                    </TableCell>
-                                    <TableCell>{item.ip_address || "-"}</TableCell>
-                                    <TableCell className="font-mono text-tiny">{item.mac_address || "-"}</TableCell>
-                                    <TableCell>{item.os_info || "-"}</TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-end gap-2">
-                                            <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(item)}>
-                                                <Edit2 size={16} />
-                                            </Button>
-                                            <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleDelete(item.id)}>
-                                                <Trash2 size={16} />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                <Card>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Hostname</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Primary IP</TableHead>
+                                    <TableHead>MAC Address</TableHead>
+                                    <TableHead>OS</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardBody>
-            </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">
+                                            Loading...
+                                        </TableCell>
+                                    </TableRow>
+                                ) : devices.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">
+                                            No devices found.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    devices.map((device) => (
+                                        <TableRow
+                                            key={device.id}
+                                            className="cursor-pointer hover:bg-muted/50"
+                                            onClick={() => navigate(`/devices/${device.id}`)}
+                                        >
+                                            <TableCell className="font-medium">
+                                                {device.hostname}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="secondary" className="gap-1 hover:bg-secondary">
+                                                    {getDeviceIcon(device.device_type)}
+                                                    {device.device_type}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>{device.primary_ip || <span className="text-muted-foreground">-</span>}</TableCell>
+                                            <TableCell className="font-mono text-xs">{device.mac_address || <span className="text-muted-foreground">-</span>}</TableCell>
+                                            <TableCell>{device.os_info || <span className="text-muted-foreground">-</span>}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/devices/${device.id}`); }}>
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={(e) => handleDelete(e, device.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} backdrop="blur" size="2xl">
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>{selectedDevice ? "Edit Device" : "New Device"}</ModalHeader>
-                            <ModalBody>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input
-                                        label="Hostname"
-                                        placeholder="server-01"
-                                        value={formData.hostname || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, hostname: v })}
-                                        isRequired
-                                    />
-                                    <Input
-                                        label="Type"
-                                        placeholder="Server, VM, IoT"
-                                        value={formData.device_type || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, device_type: v })}
-                                    />
-                                    <Input
-                                        label="IP Address"
-                                        placeholder="192.168.1.10"
-                                        value={formData.ip_address || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, ip_address: v })}
-                                    />
-                                    <Input
-                                        label="MAC Address"
-                                        placeholder="00:11:22:33:44:55"
-                                        value={formData.mac_address || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, mac_address: v })}
-                                    />
-                                    <Input
-                                        label="OS Info"
-                                        placeholder="Ubuntu 22.04"
-                                        value={formData.os_info || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, os_info: v })}
-                                    />
-                                    <Input
-                                        label="Owner"
-                                        placeholder="Admin"
-                                        value={formData.owner || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, owner: v })}
-                                    />
-                                    <Input
-                                        type="number"
-                                        label="CPU Cores"
-                                        placeholder="4"
-                                        value={formData.cpu_cores?.toString() || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, cpu_cores: parseInt(v) || undefined })}
-                                    />
-                                    <Input
-                                        type="number"
-                                        label="RAM (GB)"
-                                        placeholder="16"
-                                        value={formData.ram_gb?.toString() || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, ram_gb: parseFloat(v) || undefined })}
-                                    />
-                                </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button variant="flat" onPress={onClose}>Cancel</Button>
-                                <Button color="primary" onPress={() => handleSave(onClose)}>Save</Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Add New Device</DialogTitle>
+                            <DialogDescription>
+                                Create a new device. You can add detailed interfaces later.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="hostname">Hostname</Label>
+                                <Input
+                                    id="hostname"
+                                    value={formData.hostname || ""}
+                                    onChange={(e) => setFormData({ ...formData, hostname: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="type">Type</Label>
+                                <Select
+                                    value={formData.device_type}
+                                    onValueChange={(val) => setFormData({ ...formData, device_type: val as DeviceType })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.values(DeviceType).map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {type}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="mac">Initial MAC Address (eth0)</Label>
+                                <Input
+                                    id="mac"
+                                    placeholder="00:00:00:00:00:00"
+                                    value={formData.mac_address || ""}
+                                    onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="os">OS Info</Label>
+                                <Input
+                                    id="os"
+                                    placeholder="e.g. Ubuntu 22.04"
+                                    value={formData.os_info || ""}
+                                    onChange={(e) => setFormData({ ...formData, os_info: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleSave}>Create Device</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </AppLayout>
     );
 };

@@ -1,0 +1,1937 @@
+    Checking homelab_manager v0.1.0 (/Users/michal/Development/homelab_manager)
+error: cannot find derive macro `DeriveEntityModel` in this scope
+ --> src/entities/interfaces.rs:3:35
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use sea_orm::DeriveEntityModel;
+  |
+
+error: cannot find derive macro `Serialize` in this scope
+ --> src/entities/interfaces.rs:3:54
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                                      ^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use serde::Serialize;
+  |
+
+error: cannot find derive macro `Deserialize` in this scope
+ --> src/entities/interfaces.rs:3:65
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                                                 ^^^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use serde::Deserialize;
+  |
+
+error: cannot find attribute `sea_orm` in this scope
+ --> src/entities/interfaces.rs:4:3
+  |
+4 | #[sea_orm(table_name = "interfaces")]
+  |   ^^^^^^^
+  |
+  = note: `sea_orm` is in scope, but it is a crate, not an attribute
+help: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+  |
+5 + #[derive(DeriveActiveEnum, DeriveActiveModel, DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromQueryResult)]
+6 | pub struct Model {
+  |
+
+error: cannot find attribute `sea_orm` in this scope
+ --> src/entities/interfaces.rs:6:7
+  |
+6 |     #[sea_orm(primary_key, auto_increment = false)]
+  |       ^^^^^^^
+  |
+  = note: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+  = note: `sea_orm` is in scope, but it is a crate, not an attribute
+
+error: cannot find derive macro `EnumIter` in this scope
+  --> src/entities/interfaces.rs:15:30
+   |
+15 | #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+   |                              ^^^^^^^^
+   |
+help: consider importing this derive macro
+   |
+ 1 + use sea_orm::EnumIter;
+   |
+
+error: cannot find derive macro `DeriveRelation` in this scope
+  --> src/entities/interfaces.rs:15:40
+   |
+15 | #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+   |                                        ^^^^^^^^^^^^^^
+   |
+help: consider importing this derive macro
+   |
+ 1 + use sea_orm::DeriveRelation;
+   |
+
+error: cannot find attribute `sea_orm` in this scope
+  --> src/entities/interfaces.rs:17:7
+   |
+17 |     #[sea_orm(
+   |       ^^^^^^^
+   |
+   = note: `sea_orm` is in scope, but it is a crate, not an attribute
+help: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+   |
+16 + #[derive(DeriveActiveEnum, DeriveActiveModel, DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromQueryResult)]
+17 | pub enum Relation {
+   |
+
+error: cannot find derive macro `DeriveEntityModel` in this scope
+ --> src/entities/ip_addresses.rs:3:35
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use sea_orm::DeriveEntityModel;
+  |
+
+error: cannot find derive macro `Serialize` in this scope
+ --> src/entities/ip_addresses.rs:3:54
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                                      ^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use serde::Serialize;
+  |
+
+error: cannot find derive macro `Deserialize` in this scope
+ --> src/entities/ip_addresses.rs:3:65
+  |
+3 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                                                 ^^^^^^^^^^^
+  |
+help: consider importing this derive macro
+  |
+1 + use serde::Deserialize;
+  |
+
+error: cannot find attribute `sea_orm` in this scope
+ --> src/entities/ip_addresses.rs:4:3
+  |
+4 | #[sea_orm(table_name = "ip_addresses")]
+  |   ^^^^^^^
+  |
+  = note: `sea_orm` is in scope, but it is a crate, not an attribute
+help: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+  |
+5 + #[derive(DeriveActiveEnum, DeriveActiveModel, DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromQueryResult)]
+6 | pub struct Model {
+  |
+
+error: cannot find attribute `sea_orm` in this scope
+ --> src/entities/ip_addresses.rs:6:7
+  |
+6 |     #[sea_orm(primary_key, auto_increment = false)]
+  |       ^^^^^^^
+  |
+  = note: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+  = note: `sea_orm` is in scope, but it is a crate, not an attribute
+
+error: cannot find derive macro `EnumIter` in this scope
+  --> src/entities/ip_addresses.rs:17:30
+   |
+17 | #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+   |                              ^^^^^^^^
+   |
+help: consider importing this derive macro
+   |
+ 1 + use sea_orm::EnumIter;
+   |
+
+error: cannot find derive macro `DeriveRelation` in this scope
+  --> src/entities/ip_addresses.rs:17:40
+   |
+17 | #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+   |                                        ^^^^^^^^^^^^^^
+   |
+help: consider importing this derive macro
+   |
+ 1 + use sea_orm::DeriveRelation;
+   |
+
+error: cannot find attribute `sea_orm` in this scope
+  --> src/entities/ip_addresses.rs:19:7
+   |
+19 |     #[sea_orm(
+   |       ^^^^^^^
+   |
+   = note: `sea_orm` is in scope, but it is a crate, not an attribute
+help: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+   |
+18 + #[derive(DeriveActiveEnum, DeriveActiveModel, DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromQueryResult)]
+19 | pub enum Relation {
+   |
+
+error: cannot find attribute `sea_orm` in this scope
+  --> src/entities/ip_addresses.rs:27:7
+   |
+27 |     #[sea_orm(
+   |       ^^^^^^^
+   |
+   = note: `sea_orm` is in scope, but it is a crate, not an attribute
+help: `sea_orm` is an attribute that can be used by the derive macros `DeriveActiveEnum`, `DeriveActiveModel`, `DeriveColumn`, `DeriveDisplay`, `DeriveEntity`, `DeriveEntityModel`, `DeriveIden`, `DeriveIntoActiveModel`, `DeriveModel`, `DerivePartialModel`, `DerivePrimaryKey`, `DeriveRelatedEntity`, `DeriveRelation`, `DeriveValueType` and `FromQueryResult`, you might be missing a `derive` attribute
+   |
+18 + #[derive(DeriveActiveEnum, DeriveActiveModel, DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromQueryResult)]
+19 | pub enum Relation {
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+  --> src/db/devices.rs:43:45
+   |
+43 |         let interfaces_models = interfaces::Entity::find()
+   |                                             ^^^^^^ could not find `Entity` in `interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+43 -         let interfaces_models = interfaces::Entity::find()
+43 +         let interfaces_models = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/devices.rs:44:33
+   |
+44 |             .filter(interfaces::Column::DeviceId.is_in(device_ids))
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+44 -             .filter(interfaces::Column::DeviceId.is_in(device_ids))
+44 +             .filter(Column::DeviceId.is_in(device_ids))
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/devices.rs:45:33
+   |
+45 |             .filter(interfaces::Column::Name.eq("eth0"))
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+45 -             .filter(interfaces::Column::Name.eq("eth0"))
+45 +             .filter(Column::Name.eq("eth0"))
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+  --> src/db/devices.rs:59:44
+   |
+59 |             let ips_models = ip_addresses::Entity::find()
+   |                                            ^^^^^^ could not find `Entity` in `ip_addresses`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+59 -             let ips_models = ip_addresses::Entity::find()
+59 +             let ips_models = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/devices.rs:60:39
+   |
+60 |                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+   |                                       ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+60 -                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+60 +                 .filter(Column::InterfaceId.is_in(interface_ids))
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+   --> src/db/devices.rs:117:45
+    |
+117 |         let interfaces_models = interfaces::Entity::find()
+    |                                             ^^^^^^ could not find `Entity` in `interfaces`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+117 -         let interfaces_models = interfaces::Entity::find()
+117 +         let interfaces_models = Entity::find()
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/db/devices.rs:118:33
+    |
+118 |             .filter(interfaces::Column::DeviceId.eq(d.id))
+    |                                 ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+118 -             .filter(interfaces::Column::DeviceId.eq(d.id))
+118 +             .filter(Column::DeviceId.eq(d.id))
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+   --> src/db/devices.rs:127:45
+    |
+127 |              let ips_models = ip_addresses::Entity::find()
+    |                                             ^^^^^^ could not find `Entity` in `ip_addresses`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+127 -              let ips_models = ip_addresses::Entity::find()
+127 +              let ips_models = Entity::find()
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/devices.rs:128:39
+    |
+128 |                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+    |                                       ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+128 -                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+128 +                 .filter(Column::InterfaceId.is_in(interface_ids))
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+   --> src/db/devices.rs:276:40
+    |
+276 |                 let eth0 = interfaces::Entity::find()
+    |                                        ^^^^^^ could not find `Entity` in `interfaces`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+276 -                 let eth0 = interfaces::Entity::find()
+276 +                 let eth0 = Entity::find()
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/db/devices.rs:277:41
+    |
+277 |                     .filter(interfaces::Column::DeviceId.eq(id))
+    |                                         ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+277 -                     .filter(interfaces::Column::DeviceId.eq(id))
+277 +                     .filter(Column::DeviceId.eq(id))
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/db/devices.rs:278:41
+    |
+278 |                     .filter(interfaces::Column::Name.eq("eth0"))
+    |                                         ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+278 -                     .filter(interfaces::Column::Name.eq("eth0"))
+278 +                     .filter(Column::Name.eq("eth0"))
+    |
+
+error[E0412]: cannot find type `ActiveModel` in module `interfaces`
+   --> src/db/devices.rs:283:47
+    |
+283 |                     let mut eth0: interfaces::ActiveModel = eth0_model.into();
+    |                                               ^^^^^^^^^^^ not found in `interfaces`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::ActiveModel;
+    |
+  1 + use crate::entities::integrations::ActiveModel;
+    |
+  1 + use crate::entities::networks::ActiveModel;
+    |
+  1 + use crate::entities::services::ActiveModel;
+    |
+    = and 1 other candidate
+help: if you import `ActiveModel`, refer to it directly
+    |
+283 -                     let mut eth0: interfaces::ActiveModel = eth0_model.into();
+283 +                     let mut eth0: ActiveModel = eth0_model.into();
+    |
+
+error[E0422]: cannot find struct, variant or union type `ActiveModel` in module `interfaces`
+   --> src/db/devices.rs:288:49
+    |
+288 |                     let interface = interfaces::ActiveModel {
+    |                                                 ^^^^^^^^^^^ not found in `interfaces`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::ActiveModel;
+    |
+  1 + use crate::entities::integrations::ActiveModel;
+    |
+  1 + use crate::entities::networks::ActiveModel;
+    |
+  1 + use crate::entities::services::ActiveModel;
+    |
+    = and 1 other candidate
+help: if you import `ActiveModel`, refer to it directly
+    |
+288 -                     let interface = interfaces::ActiveModel {
+288 +                     let interface = ActiveModel {
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+  --> src/db/interfaces.rs:39:31
+   |
+39 |         let res = interfaces::Entity::delete_by_id(id)
+   |                               ^^^^^^ could not find `Entity` in `interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+39 -         let res = interfaces::Entity::delete_by_id(id)
+39 +         let res = Entity::delete_by_id(id)
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+  --> src/db/interfaces.rs:46:38
+   |
+46 |         let interfaces = interfaces::Entity::find()
+   |                                      ^^^^^^ could not find `Entity` in `interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+46 -         let interfaces = interfaces::Entity::find()
+46 +         let interfaces = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:48:33
+   |
+48 |             .column(interfaces::Column::Id)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+48 -             .column(interfaces::Column::Id)
+48 +             .column(Column::Id)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:49:33
+   |
+49 |             .column(interfaces::Column::DeviceId)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+49 -             .column(interfaces::Column::DeviceId)
+49 +             .column(Column::DeviceId)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:50:33
+   |
+50 |             .column(interfaces::Column::Name)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+50 -             .column(interfaces::Column::Name)
+50 +             .column(Column::Name)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:51:66
+   |
+51 | ...   .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_addr...
+   |                                                            ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+51 -             .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+51 +             .column_as(sea_orm::sea_query::Expr::col(Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:52:33
+   |
+52 |             .column(interfaces::Column::Type)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+52 -             .column(interfaces::Column::Type)
+52 +             .column(Column::Type)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:53:33
+   |
+53 |             .column(interfaces::Column::CreatedAt)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+53 -             .column(interfaces::Column::CreatedAt)
+53 +             .column(Column::CreatedAt)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:54:33
+   |
+54 |             .filter(interfaces::Column::DeviceId.eq(device_id))
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+54 -             .filter(interfaces::Column::DeviceId.eq(device_id))
+54 +             .filter(Column::DeviceId.eq(device_id))
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/interfaces.rs:55:39
+   |
+55 |             .order_by_asc(interfaces::Column::Name)
+   |                                       ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+55 -             .order_by_asc(interfaces::Column::Name)
+55 +             .order_by_asc(Column::Name)
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+  --> src/db/ips.rs:15:37
+   |
+15 |             let iface = interfaces::Entity::find()
+   |                                     ^^^^^^ could not find `Entity` in `interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+15 -             let iface = interfaces::Entity::find()
+15 +             let iface = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:17:37
+   |
+17 |                 .column(interfaces::Column::Id)
+   |                                     ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+17 -                 .column(interfaces::Column::Id)
+17 +                 .column(Column::Id)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:18:37
+   |
+18 |                 .filter(interfaces::Column::DeviceId.eq(did))
+   |                                     ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+18 -                 .filter(interfaces::Column::DeviceId.eq(did))
+18 +                 .filter(Column::DeviceId.eq(did))
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:19:43
+   |
+19 |                 .order_by_asc(interfaces::Column::Name)
+   |                                           ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+19 -                 .order_by_asc(interfaces::Column::Name)
+19 +                 .order_by_asc(Column::Name)
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+  --> src/db/ips.rs:77:35
+   |
+77 |         let query = ip_addresses::Entity::find()
+   |                                   ^^^^^^ could not find `Entity` in `ip_addresses`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+77 -         let query = ip_addresses::Entity::find()
+77 +         let query = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:80:33
+   |
+80 |             .filter(interfaces::Column::DeviceId.eq(device_id))
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+80 -             .filter(interfaces::Column::DeviceId.eq(device_id))
+80 +             .filter(Column::DeviceId.eq(device_id))
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:81:41
+   |
+81 |             .order_by_asc(ip_addresses::Column::IpAddress)
+   |                                         ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+81 -             .order_by_asc(ip_addresses::Column::IpAddress)
+81 +             .order_by_asc(Column::IpAddress)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:83:35
+   |
+83 |             .column(ip_addresses::Column::Id)
+   |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+83 -             .column(ip_addresses::Column::Id)
+83 +             .column(Column::Id)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:84:36
+   |
+84 |             .column_as(interfaces::Column::DeviceId, "device_id")
+   |                                    ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+84 -             .column_as(interfaces::Column::DeviceId, "device_id")
+84 +             .column_as(Column::DeviceId, "device_id")
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/db/ips.rs:85:36
+   |
+85 |             .column_as(interfaces::Column::Name, "interface_name")
+   |                                    ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+85 -             .column_as(interfaces::Column::Name, "interface_name")
+85 +             .column_as(Column::Name, "interface_name")
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:86:48
+   |
+86 |             .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+   |                                                ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+86 -             .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+86 +             .column_as(Expr::col(Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:87:35
+   |
+87 |             .column(ip_addresses::Column::MacAddress)
+   |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+87 -             .column(ip_addresses::Column::MacAddress)
+87 +             .column(Column::MacAddress)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:88:35
+   |
+88 |             .column(ip_addresses::Column::IsStatic)
+   |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+88 -             .column(ip_addresses::Column::IsStatic)
+88 +             .column(Column::IsStatic)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+  --> src/db/ips.rs:89:35
+   |
+89 |             .column(ip_addresses::Column::Status)
+   |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::devices::Column;
+   |
+ 1 + use crate::entities::integrations::Column;
+   |
+ 1 + use crate::entities::networks::Column;
+   |
+ 1 + use crate::entities::services::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+89 -             .column(ip_addresses::Column::Status)
+89 +             .column(Column::Status)
+   |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+   --> src/db/ips.rs:137:35
+    |
+137 |         let query = ip_addresses::Entity::find()
+    |                                   ^^^^^^ could not find `Entity` in `ip_addresses`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+137 -         let query = ip_addresses::Entity::find()
+137 +         let query = Entity::find()
+    |
+
+error[E0425]: cannot find value `Entity` in module `interfaces`
+   --> src/db/ips.rs:141:57
+    |
+141 |                 devices::Entity::belongs_to(interfaces::Entity)
+    |                                                         ^^^^^^ not found in `interfaces`
+    |
+help: consider importing one of these unit structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+141 -                 devices::Entity::belongs_to(interfaces::Entity)
+141 +                 devices::Entity::belongs_to(Entity)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/db/ips.rs:143:37
+    |
+143 |                     .to(interfaces::Column::DeviceId)
+    |                                     ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+143 -                     .to(interfaces::Column::DeviceId)
+143 +                     .to(Column::DeviceId)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:146:35
+    |
+146 |             .filter(ip_addresses::Column::NetworkId.eq(network_id))
+    |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+146 -             .filter(ip_addresses::Column::NetworkId.eq(network_id))
+146 +             .filter(Column::NetworkId.eq(network_id))
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:147:41
+    |
+147 |             .order_by_asc(ip_addresses::Column::IpAddress)
+    |                                         ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+147 -             .order_by_asc(ip_addresses::Column::IpAddress)
+147 +             .order_by_asc(Column::IpAddress)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:149:35
+    |
+149 |             .column(ip_addresses::Column::Id)
+    |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+149 -             .column(ip_addresses::Column::Id)
+149 +             .column(Column::Id)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:150:48
+    |
+150 |             .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+    |                                                ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+150 -             .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+150 +             .column_as(Expr::col(Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:151:35
+    |
+151 |             .column(ip_addresses::Column::MacAddress)
+    |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+151 -             .column(ip_addresses::Column::MacAddress)
+151 +             .column(Column::MacAddress)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:152:35
+    |
+152 |             .column(ip_addresses::Column::Status)
+    |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+152 -             .column(ip_addresses::Column::Status)
+152 +             .column(Column::Status)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/db/ips.rs:153:35
+    |
+153 |             .column(ip_addresses::Column::Description)
+    |                                   ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+153 -             .column(ip_addresses::Column::Description)
+153 +             .column(Column::Description)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/db/ips.rs:155:36
+    |
+155 |             .column_as(interfaces::Column::Name, "interface_name")
+    |                                    ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::devices::Column;
+    |
+  1 + use crate::entities::integrations::Column;
+    |
+  1 + use crate::entities::networks::Column;
+    |
+  1 + use crate::entities::services::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+155 -             .column_as(interfaces::Column::Name, "interface_name")
+155 +             .column_as(Column::Name, "interface_name")
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+   --> src/db/ips.rs:193:33
+    |
+193 |         let res = ip_addresses::Entity::delete_by_id(id)
+    |                                 ^^^^^^ could not find `Entity` in `ip_addresses`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::devices::Entity;
+    |
+  1 + use crate::entities::integrations::Entity;
+    |
+  1 + use crate::entities::networks::Entity;
+    |
+  1 + use crate::entities::services::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+193 -         let res = ip_addresses::Entity::delete_by_id(id)
+193 +         let res = Entity::delete_by_id(id)
+    |
+
+error[E0412]: cannot find type `Uuid` in this scope
+ --> src/entities/interfaces.rs:7:13
+  |
+7 |     pub id: Uuid,
+  |             ^^^^ not found in this scope
+  |
+help: consider importing one of these structs
+  |
+1 + use crate::Uuid;
+  |
+1 + use sea_orm::prelude::Uuid;
+  |
+1 + use sqlx::types::Uuid;
+  |
+1 + use uuid::Uuid;
+  |
+
+error[E0412]: cannot find type `Uuid` in this scope
+ --> src/entities/interfaces.rs:8:20
+  |
+8 |     pub device_id: Uuid,
+  |                    ^^^^ not found in this scope
+  |
+help: consider importing one of these structs
+  |
+1 + use crate::Uuid;
+  |
+1 + use sea_orm::prelude::Uuid;
+  |
+1 + use sqlx::types::Uuid;
+  |
+1 + use uuid::Uuid;
+  |
+
+error[E0412]: cannot find type `DateTimeWithTimeZone` in this scope
+  --> src/entities/interfaces.rs:12:21
+   |
+12 |     pub created_at: DateTimeWithTimeZone,
+   |                     ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this type alias
+   |
+ 1 + use sea_orm::prelude::DateTimeWithTimeZone;
+   |
+
+error[E0405]: cannot find trait `Related` in this scope
+  --> src/entities/interfaces.rs:27:6
+   |
+27 | impl Related<super::devices::Entity> for Entity {
+   |      ^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+ 1 + use sea_orm::Related;
+   |
+
+error[E0412]: cannot find type `Entity` in this scope
+  --> src/entities/interfaces.rs:27:42
+   |
+27 | impl Related<super::devices::Entity> for Entity {
+   |                                          ^^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+
+error[E0412]: cannot find type `RelationDef` in this scope
+  --> src/entities/interfaces.rs:28:16
+   |
+16 | pub enum Relation {
+   | ----------------- similarly named enum `Relation` defined here
+...
+28 |     fn to() -> RelationDef {
+   |                ^^^^^^^^^^^
+   |
+help: an enum with a similar name exists
+   |
+28 -     fn to() -> RelationDef {
+28 +     fn to() -> Relation {
+   |
+help: consider importing this struct
+   |
+ 1 + use sea_orm::RelationDef;
+   |
+
+error[E0405]: cannot find trait `ActiveModelBehavior` in this scope
+  --> src/entities/interfaces.rs:33:6
+   |
+33 | impl ActiveModelBehavior for ActiveModel {}
+   |      ^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+ 1 + use sea_orm::ActiveModelBehavior;
+   |
+
+error[E0412]: cannot find type `ActiveModel` in this scope
+  --> src/entities/interfaces.rs:33:30
+   |
+33 | impl ActiveModelBehavior for ActiveModel {}
+   |                              ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::ActiveModel;
+   |
+ 1 + use crate::entities::integrations::ActiveModel;
+   |
+ 1 + use crate::entities::networks::ActiveModel;
+   |
+ 1 + use crate::entities::services::ActiveModel;
+   |
+   = and 1 other candidate
+
+error[E0412]: cannot find type `Uuid` in this scope
+ --> src/entities/ip_addresses.rs:7:13
+  |
+7 |     pub id: Uuid,
+  |             ^^^^ not found in this scope
+  |
+help: consider importing one of these structs
+  |
+1 + use crate::Uuid;
+  |
+1 + use sea_orm::prelude::Uuid;
+  |
+1 + use sqlx::types::Uuid;
+  |
+1 + use uuid::Uuid;
+  |
+
+error[E0412]: cannot find type `Uuid` in this scope
+ --> src/entities/ip_addresses.rs:8:21
+  |
+8 |     pub network_id: Uuid,
+  |                     ^^^^ not found in this scope
+  |
+help: consider importing one of these structs
+  |
+1 + use crate::Uuid;
+  |
+1 + use sea_orm::prelude::Uuid;
+  |
+1 + use sqlx::types::Uuid;
+  |
+1 + use uuid::Uuid;
+  |
+
+error[E0412]: cannot find type `Uuid` in this scope
+ --> src/entities/ip_addresses.rs:9:30
+  |
+9 |     pub interface_id: Option<Uuid>,
+  |                              ^^^^ not found in this scope
+  |
+help: consider importing one of these structs
+  |
+1 + use crate::Uuid;
+  |
+1 + use sea_orm::prelude::Uuid;
+  |
+1 + use sqlx::types::Uuid;
+  |
+1 + use uuid::Uuid;
+  |
+
+error[E0405]: cannot find trait `Related` in this scope
+  --> src/entities/ip_addresses.rs:37:6
+   |
+37 | impl Related<super::networks::Entity> for Entity {
+   |      ^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+ 1 + use sea_orm::Related;
+   |
+
+error[E0412]: cannot find type `Entity` in this scope
+  --> src/entities/ip_addresses.rs:37:43
+   |
+37 | impl Related<super::networks::Entity> for Entity {
+   |                                           ^^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+
+error[E0412]: cannot find type `RelationDef` in this scope
+  --> src/entities/ip_addresses.rs:38:16
+   |
+18 | pub enum Relation {
+   | ----------------- similarly named enum `Relation` defined here
+...
+38 |     fn to() -> RelationDef {
+   |                ^^^^^^^^^^^
+   |
+help: an enum with a similar name exists
+   |
+38 -     fn to() -> RelationDef {
+38 +     fn to() -> Relation {
+   |
+help: consider importing this struct
+   |
+ 1 + use sea_orm::RelationDef;
+   |
+
+error[E0405]: cannot find trait `Related` in this scope
+  --> src/entities/ip_addresses.rs:43:6
+   |
+43 | impl Related<super::interfaces::Entity> for Entity {
+   |      ^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+ 1 + use sea_orm::Related;
+   |
+
+error[E0412]: cannot find type `Entity` in module `super::interfaces`
+  --> src/entities/ip_addresses.rs:43:33
+   |
+43 | impl Related<super::interfaces::Entity> for Entity {
+   |                                 ^^^^^^ not found in `super::interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+43 - impl Related<super::interfaces::Entity> for Entity {
+43 + impl Related<Entity> for Entity {
+   |
+
+error[E0412]: cannot find type `Entity` in this scope
+  --> src/entities/ip_addresses.rs:43:45
+   |
+43 | impl Related<super::interfaces::Entity> for Entity {
+   |                                             ^^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::Entity;
+   |
+ 1 + use crate::entities::integrations::Entity;
+   |
+ 1 + use crate::entities::networks::Entity;
+   |
+ 1 + use crate::entities::services::Entity;
+   |
+   = and 1 other candidate
+
+error[E0412]: cannot find type `RelationDef` in this scope
+  --> src/entities/ip_addresses.rs:44:16
+   |
+18 | pub enum Relation {
+   | ----------------- similarly named enum `Relation` defined here
+...
+44 |     fn to() -> RelationDef {
+   |                ^^^^^^^^^^^
+   |
+help: an enum with a similar name exists
+   |
+44 -     fn to() -> RelationDef {
+44 +     fn to() -> Relation {
+   |
+help: consider importing this struct
+   |
+ 1 + use sea_orm::RelationDef;
+   |
+
+error[E0405]: cannot find trait `ActiveModelBehavior` in this scope
+  --> src/entities/ip_addresses.rs:49:6
+   |
+49 | impl ActiveModelBehavior for ActiveModel {}
+   |      ^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+ 1 + use sea_orm::ActiveModelBehavior;
+   |
+
+error[E0412]: cannot find type `ActiveModel` in this scope
+  --> src/entities/ip_addresses.rs:49:30
+   |
+49 | impl ActiveModelBehavior for ActiveModel {}
+   |                              ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::devices::ActiveModel;
+   |
+ 1 + use crate::entities::integrations::ActiveModel;
+   |
+ 1 + use crate::entities::networks::ActiveModel;
+   |
+ 1 + use crate::entities::services::ActiveModel;
+   |
+   = and 1 other candidate
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+  --> src/integrations/mod.rs:97:46
+   |
+97 |         let existing_interface = interfaces::Entity::find()
+   |                                              ^^^^^^ could not find `Entity` in `interfaces`
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::entities::users::Entity;
+   |
+ 1 + use crate::integrations::devices::Entity;
+   |
+ 1 + use crate::integrations::integrations::Entity;
+   |
+ 1 + use crate::integrations::networks::Entity;
+   |
+   = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+   |
+97 -         let existing_interface = interfaces::Entity::find()
+97 +         let existing_interface = Entity::find()
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+  --> src/integrations/mod.rs:99:33
+   |
+99 |             .column(interfaces::Column::Id)
+   |                                 ^^^^^^ could not find `Column` in `interfaces`
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::entities::users::Column;
+   |
+ 1 + use crate::integrations::devices::Column;
+   |
+ 1 + use crate::integrations::integrations::Column;
+   |
+ 1 + use crate::integrations::networks::Column;
+   |
+   = and 2 other candidates
+help: if you import `Column`, refer to it directly
+   |
+99 -             .column(interfaces::Column::Id)
+99 +             .column(Column::Id)
+   |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/integrations/mod.rs:100:33
+    |
+100 |             .column(interfaces::Column::DeviceId)
+    |                                 ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+100 -             .column(interfaces::Column::DeviceId)
+100 +             .column(Column::DeviceId)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/integrations/mod.rs:101:43
+    |
+101 |             .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+    |                                           ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+101 -             .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+101 +             .filter(Expr::col(Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `ip_addresses`
+   --> src/integrations/mod.rs:162:50
+    |
+162 |                  let existing_ip = ip_addresses::Entity::find()
+    |                                                  ^^^^^^ could not find `Entity` in `ip_addresses`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::users::Entity;
+    |
+  1 + use crate::integrations::devices::Entity;
+    |
+  1 + use crate::integrations::integrations::Entity;
+    |
+  1 + use crate::integrations::networks::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+162 -                  let existing_ip = ip_addresses::Entity::find()
+162 +                  let existing_ip = Entity::find()
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/integrations/mod.rs:164:43
+    |
+164 |                     .column(ip_addresses::Column::Id)
+    |                                           ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+164 -                     .column(ip_addresses::Column::Id)
+164 +                     .column(Column::Id)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `ip_addresses`
+   --> src/integrations/mod.rs:165:53
+    |
+165 |                     .filter(Expr::col(ip_addresses::Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
+    |                                                     ^^^^^^ could not find `Column` in `ip_addresses`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+165 -                     .filter(Expr::col(ip_addresses::Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
+165 +                     .filter(Expr::col(Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
+    |
+
+error[E0433]: failed to resolve: could not find `Entity` in `interfaces`
+   --> src/integrations/mod.rs:172:53
+    |
+172 |                      let interface_id = interfaces::Entity::find()
+    |                                                     ^^^^^^ could not find `Entity` in `interfaces`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::entities::users::Entity;
+    |
+  1 + use crate::integrations::devices::Entity;
+    |
+  1 + use crate::integrations::integrations::Entity;
+    |
+  1 + use crate::integrations::networks::Entity;
+    |
+    = and 1 other candidate
+help: if you import `Entity`, refer to it directly
+    |
+172 -                      let interface_id = interfaces::Entity::find()
+172 +                      let interface_id = Entity::find()
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/integrations/mod.rs:174:45
+    |
+174 |                         .column(interfaces::Column::Id)
+    |                                             ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+174 -                         .column(interfaces::Column::Id)
+174 +                         .column(Column::Id)
+    |
+
+error[E0433]: failed to resolve: could not find `Column` in `interfaces`
+   --> src/integrations/mod.rs:175:55
+    |
+175 |                         .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+    |                                                       ^^^^^^ could not find `Column` in `interfaces`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::entities::users::Column;
+    |
+  1 + use crate::integrations::devices::Column;
+    |
+  1 + use crate::integrations::integrations::Column;
+    |
+  1 + use crate::integrations::networks::Column;
+    |
+    = and 2 other candidates
+help: if you import `Column`, refer to it directly
+    |
+175 -                         .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+175 +                         .filter(Expr::col(Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
+    |
+
+warning: unused import: `QuerySelect`
+ --> src/db/devices.rs:7:27
+  |
+7 | use sea_orm::{QueryOrder, QuerySelect};
+  |                           ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Alias` and `Expr`
+ --> src/db/devices.rs:8:26
+  |
+8 | use sea_orm::sea_query::{Alias, Expr};
+  |                          ^^^^^  ^^^^
+
+warning: unused imports: `networks` and `services`
+ --> src/integrations/mod.rs:2:37
+  |
+2 | use crate::entities::{integrations, services, devices, interfaces, ip_addresses, networks};
+  |                                     ^^^^^^^^                                     ^^^^^^^^
+
+warning: unused import: `ModelTrait`
+ --> src/integrations/mod.rs:4:77
+  |
+4 | use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter, ModelTrait, QuerySelect};
+  |                                                                             ^^^^^^^^^^
+
+warning: unused import: `ipnetwork::IpNetwork`
+ --> src/integrations/mod.rs:5:5
+  |
+5 | use ipnetwork::IpNetwork;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::str::FromStr`
+   --> src/integrations/mod.rs:134:21
+    |
+134 |                 use std::str::FromStr;
+    |                     ^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0405, E0412, E0422, E0425, E0433.
+For more information about an error, try `rustc --explain E0405`.
+warning: `homelab_manager` (lib) generated 6 warnings
+error: could not compile `homelab_manager` (lib) due to 97 previous errors; 6 warnings emitted

@@ -113,10 +113,13 @@ pub async fn oidc_callback(
 ) -> impl IntoResponse {
     let oidc = match &state.oidc {
         Some(s) => s,
-        None => return (
-            axum::http::StatusCode::SERVICE_UNAVAILABLE,
-            "OIDC authentication is not configured.",
-        ).into_response(),
+        None => {
+            return (
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "OIDC authentication is not configured.",
+            )
+                .into_response()
+        }
     };
 
     let (claims, _id_token) = match oidc.exchange_code(params.code).await {

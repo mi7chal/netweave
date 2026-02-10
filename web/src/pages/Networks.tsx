@@ -1,7 +1,28 @@
-import { Button, Card, CardBody, Chip, useDisclosure, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Edit2, Network as NetworkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AppLayout } from "../components/AppLayout";
+import { fetchApi } from "@/lib/api-client";
+import { AppLayout } from "../layouts/AppLayout";
 
 interface Network {
     id: string;
@@ -15,18 +36,15 @@ interface Network {
 export const Networks = () => {
     const [networks, setNetworks] = useState<Network[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
     const [formData, setFormData] = useState<Partial<Network>>({});
 
     const fetchNetworks = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('/api/networks');
-            if (res.ok) {
-                const data = await res.json();
-                setNetworks(data);
-            }
+            const data = await fetchApi<Network[]>('/api/networks');
+            setNetworks(data);
         } catch (e) {
             console.error(e);
         } finally {
@@ -41,30 +59,26 @@ export const Networks = () => {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure? This will delete the network and all associated IP assignments.")) return;
         try {
-            await fetch(`/api/networks/${id}`, { method: 'DELETE' });
+            await fetchApi(`/api/networks/${id}`, { method: 'DELETE' });
             fetchNetworks();
         } catch (e) {
             console.error(e);
         }
     };
 
-    const handleSave = async (onClose: () => void) => {
+    const handleSave = async () => {
         try {
             const method = selectedNetwork ? 'PUT' : 'POST';
             const url = selectedNetwork ? `/api/networks/${selectedNetwork.id}` : '/api/networks';
 
-            const res = await fetch(url, {
+            await fetchApi(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
-            if (res.ok) {
-                fetchNetworks();
-                onClose();
-            } else {
-                alert("Failed to save network");
-            }
+            fetchNetworks();
+            setIsDialogOpen(false);
         } catch (e) {
             console.error(e);
         }
@@ -73,124 +87,148 @@ export const Networks = () => {
     const openEdit = (network: Network) => {
         setSelectedNetwork(network);
         setFormData(network);
-        onOpen();
+        setIsDialogOpen(true);
     };
 
     const openCreate = () => {
         setSelectedNetwork(null);
         setFormData({});
-        onOpen();
+        setIsDialogOpen(true);
     };
 
     return (
         <AppLayout>
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Networks</h1>
-                    <p className="text-default-500">Manage IP blocks, VLANs and Subnets.</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button color="primary" variant="shadow" startContent={<Plus size={18} />} onPress={openCreate}>
-                        Add Network
+            <div className="flex flex-col space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Networks</h1>
+                        <p className="text-muted-foreground">Manage IP blocks, VLANs and Subnets.</p>
+                    </div>
+                    <Button onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Network
                     </Button>
                 </div>
-            </div>
 
-            <Card className="bg-default-50 border border-white/5">
-                <CardBody>
-                    <Table aria-label="Networks table" removeWrapper color="primary" selectionMode="none">
-                        <TableHeader>
-                            <TableColumn>NAME</TableColumn>
-                            <TableColumn>CIDR</TableColumn>
-                            <TableColumn>VLAN</TableColumn>
-                            <TableColumn>GATEWAY</TableColumn>
-                            <TableColumn>DESCRIPTION</TableColumn>
-                            <TableColumn align="end">ACTIONS</TableColumn>
-                        </TableHeader>
-                        <TableBody emptyContent={"No networks found."} items={networks} isLoading={isLoading}>
-                            {(item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-bold">
-                                        <div className="flex items-center gap-2">
-                                            <NetworkIcon size={16} className="text-default-400" />
-                                            {item.name}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip size="sm" variant="flat" color="primary">{item.cidr}</Chip>
-                                    </TableCell>
-                                    <TableCell>{item.vlan_id || "-"}</TableCell>
-                                    <TableCell>{item.gateway || "-"}</TableCell>
-                                    <TableCell className="text-default-400 text-tiny">{item.description || "-"}</TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-end gap-2">
-                                            <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(item)}>
-                                                <Edit2 size={16} />
-                                            </Button>
-                                            <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleDelete(item.id)}>
-                                                <Trash2 size={16} />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                <Card>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>CIDR</TableHead>
+                                    <TableHead>VLAN</TableHead>
+                                    <TableHead>Gateway</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardBody>
-            </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
+                                    </TableRow>
+                                ) : networks.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">No networks found.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    networks.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <NetworkIcon className="h-4 w-4 text-muted-foreground" />
+                                                    {item.name}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline">{item.cidr}</Badge>
+                                            </TableCell>
+                                            <TableCell>{item.vlan_id || "-"}</TableCell>
+                                            <TableCell>{item.gateway || "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">{item.description || "-"}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="text-destructive hover:text-destructive">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} backdrop="blur" size="lg">
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>{selectedNetwork ? "Edit Network" : "New Network"}</ModalHeader>
-                            <ModalBody>
-                                <div className="grid grid-cols-1 gap-4">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{selectedNetwork ? "Edit Network" : "New Network"}</DialogTitle>
+                            <DialogDescription>
+                                Defines a network segment.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Name</Label>
+                                <Input
+                                    id="name"
+                                    placeholder="Home LAN"
+                                    value={formData.name || ""}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="cidr">CIDR</Label>
+                                <Input
+                                    id="cidr"
+                                    placeholder="192.168.1.0/24"
+                                    value={formData.cidr || ""}
+                                    onChange={(e) => setFormData({ ...formData, cidr: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="vlan">VLAN ID</Label>
                                     <Input
-                                        label="Name"
-                                        placeholder="Home LAN"
-                                        value={formData.name || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, name: v })}
-                                        isRequired
-                                    />
-                                    <Input
-                                        label="CIDR"
-                                        placeholder="192.168.1.0/24"
-                                        value={formData.cidr || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, cidr: v })}
-                                        isRequired
-                                    />
-                                    <div className="flex gap-4">
-                                        <Input
-                                            label="VLAN ID"
-                                            placeholder="10"
-                                            type="number"
-                                            value={formData.vlan_id?.toString() || ""}
-                                            onValueChange={(v) => setFormData({ ...formData, vlan_id: parseInt(v) || undefined })}
-                                        />
-                                        <Input
-                                            label="Gateway"
-                                            placeholder="192.168.1.1"
-                                            value={formData.gateway || ""}
-                                            onValueChange={(v) => setFormData({ ...formData, gateway: v })}
-                                        />
-                                    </div>
-                                    <Input
-                                        label="Description"
-                                        placeholder="Main trusted network"
-                                        value={formData.description || ""}
-                                        onValueChange={(v) => setFormData({ ...formData, description: v })}
+                                        id="vlan"
+                                        type="number"
+                                        placeholder="10"
+                                        value={formData.vlan_id?.toString() || ""}
+                                        onChange={(e) => setFormData({ ...formData, vlan_id: parseInt(e.target.value) || undefined })}
                                     />
                                 </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button variant="flat" onPress={onClose}>Cancel</Button>
-                                <Button color="primary" onPress={() => handleSave(onClose)}>Save</Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="gateway">Gateway</Label>
+                                    <Input
+                                        id="gateway"
+                                        placeholder="192.168.1.1"
+                                        value={formData.gateway || ""}
+                                        onChange={(e) => setFormData({ ...formData, gateway: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="desc">Description</Label>
+                                <Input
+                                    id="desc"
+                                    placeholder="Main trusted network"
+                                    value={formData.description || ""}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleSave}>Save</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </AppLayout>
     );
 };

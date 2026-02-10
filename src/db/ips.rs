@@ -8,8 +8,10 @@ use uuid::Uuid;
 
 impl Db {
     pub async fn create_ip(&self, params: CreateIpParams) -> Result<Uuid, anyhow::Error> {
-        // Resolve Interface ID if device_id is provided
-        let interface_id = if let Some(did) = params.device_id {
+        // Resolve Interface ID: Use explicit or infer from device_id
+        let interface_id = if let Some(iid) = params.interface_id {
+            Some(iid)
+        } else if let Some(did) = params.device_id {
             let iface = interfaces::Entity::find()
                 .select_only()
                 .column(interfaces::Column::Id)
@@ -104,7 +106,7 @@ impl Db {
 
             let ip_str: String = row.try_get("", "ip_address")?;
             let cidr_str: String = row.try_get("", "network_cidr")?;
-            let mac_str: Option<String> = row.try_get("", "mac_address")?;
+            let mac: Option<crate::models::types::MacAddress> = row.try_get("", "mac_address")?;
 
             views.push(DeviceIpView {
                 id: row.try_get("", "id")?,
@@ -116,7 +118,7 @@ impl Db {
                     .unwrap_or("")
                     .parse()
                     .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
-                mac_address: mac_str.and_then(|s| s.parse().ok()), // parse Option<String> -> Option<MacAddress>
+                mac_address: mac.map(|m| m.0),
                 is_static: row.try_get("", "is_static")?,
                 status: Some(status),
                 network_name: row.try_get("", "network_name")?,
@@ -167,7 +169,7 @@ impl Db {
             };
 
             let ip_str: String = row.try_get("", "ip_address")?;
-            let mac_str: Option<String> = row.try_get("", "mac_address")?;
+            let mac: Option<crate::models::types::MacAddress> = row.try_get("", "mac_address")?;
 
             views.push(NetworkIpView {
                 id: row.try_get("", "id")?,
@@ -177,7 +179,7 @@ impl Db {
                     .unwrap_or("")
                     .parse()
                     .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
-                mac_address: mac_str.and_then(|s| s.parse().ok()),
+                mac_address: mac.map(|m| m.0),
                 status,
                 description: row.try_get("", "description")?,
                 device_hostname: row.try_get("", "device_hostname").ok(),

@@ -63,7 +63,7 @@ impl Db {
                 id: i.id,
                 device_id: i.device_id,
                 name: i.name,
-                mac_address: i.mac_address.and_then(|s| s.parse().ok()),
+                mac_address: i.mac_address.map(|m| m.0),
                 interface_type: i.r#type,
             })
             .collect())

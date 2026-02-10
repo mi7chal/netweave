@@ -41,6 +41,7 @@ pub async fn assign_ip(
     let params = CreateIpParams {
         network_id: payload.network_id,
         device_id: Some(device_id),
+        interface_id: None,
         ip_address,
         mac_address,
         is_static: payload.is_static,

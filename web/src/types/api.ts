@@ -22,3 +22,85 @@ export interface CreateServicePayload {
     device_id?: string;
     is_public: boolean;
 }
+
+// --- Devices & Networks ---
+
+export const DeviceType = {
+    Physical: "PHYSICAL",
+    Vm: "VM",
+    Lxc: "LXC",
+    Container: "CONTAINER",
+    Switch: "SWITCH",
+    Ap: "AP",
+    Router: "ROUTER",
+    Other: "OTHER",
+} as const;
+
+export type DeviceType = typeof DeviceType[keyof typeof DeviceType];
+
+export const IpStatus = {
+    Active: "ACTIVE",
+    Reserved: "RESERVED",
+    Dhcp: "DHCP",
+    Deprecated: "DEPRECATED",
+    Free: "FREE",
+} as const;
+
+export type IpStatus = typeof IpStatus[keyof typeof IpStatus];
+
+export interface Interface {
+    id: string;
+    device_id: string;
+    name: string;
+    mac_address: string | null;
+    interface_type: string | null;
+}
+
+export interface IpAddress {
+    id: string;
+    network_id: string;
+    interface_id: string | null;
+    ip_address: string;
+    mac_address: string | null;
+    status: IpStatus;
+    description: string | null;
+    is_static: boolean;
+}
+
+export interface DeviceListView {
+    id: string;
+    hostname: string;
+    device_type: DeviceType;
+    os_info: string | null;
+    created_at: string;
+    primary_ip: string | null;
+    mac_address: string | null;
+}
+
+export interface InterfaceWithIps extends Interface {
+    ips: IpAddress[];
+}
+
+export interface DeviceDetails {
+    id: string;
+    parent_device_id: string | null;
+    hostname: string;
+    device_type: DeviceType;
+    cpu_cores: number | null;
+    ram_gb: number | null;
+    storage_gb: number | null;
+    os_info: string | null;
+    created_at: string;
+    interfaces: InterfaceWithIps[];
+}
+
+export interface CreateDevicePayload {
+    parent_device_id?: string;
+    hostname: string;
+    device_type: DeviceType;
+    os_info?: string;
+    cpu_cores?: number;
+    ram_gb?: number;
+    storage_gb?: number;
+    mac_address?: string; // Initial MAC
+}

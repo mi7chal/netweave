@@ -1,0 +1,934 @@
+    Checking homelab_manager v0.1.0 (/Users/michal/Development/homelab_manager)
+warning: unused import: `QuerySelect`
+ --> src/db/devices.rs:7:27
+  |
+7 | use sea_orm::{QueryOrder, QuerySelect};
+  |                           ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Alias` and `Expr`
+ --> src/db/devices.rs:8:26
+  |
+8 | use sea_orm::sea_query::{Alias, Expr};
+  |                          ^^^^^  ^^^^
+
+warning: unused imports: `networks` and `services`
+ --> src/integrations/mod.rs:2:37
+  |
+2 | use crate::entities::{integrations, services, devices, interfaces, ip_addresses, networks};
+  |                                     ^^^^^^^^                                     ^^^^^^^^
+
+warning: unused import: `ModelTrait`
+ --> src/integrations/mod.rs:4:77
+  |
+4 | use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter, ModelTrait, QuerySelect};
+  |                                                                             ^^^^^^^^^^
+
+warning: unused import: `ipnetwork::IpNetwork`
+ --> src/integrations/mod.rs:5:5
+  |
+5 | use ipnetwork::IpNetwork;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::str::FromStr`
+   --> src/integrations/mod.rs:134:21
+    |
+134 |                 use std::str::FromStr;
+    |                     ^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/interfaces.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+39 | pub enum ActiveValue<V>
+   |          ----------- required by a bound in this enum
+40 | where
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+   = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/ip_addresses.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+39 | pub enum ActiveValue<V>
+   |          ----------- required by a bound in this enum
+40 | where
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+   = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> src/db/devices.rs:146:34
+    |
+146 |                     mac_address: ip.mac_address,
+    |                                  ^^^^^^^^^^^^^^ expected `mac_address::MacAddress`, found `models::types::MacAddress`
+    |
+    = note: `models::types::MacAddress` and `mac_address::MacAddress` have similar names, but are actually distinct types
+note: `models::types::MacAddress` is defined in the current crate
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+note: `mac_address::MacAddress` is defined in crate `mac_address`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mac_address-1.1.8/src/lib.rs:92:1
+    |
+ 92 | pub struct MacAddress {
+    | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/db/devices.rs:284:44
+    |
+284 |                     eth0.mac_address = Set(Some(crate::models::types::MacAddress(mac)));
+    |                                        --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |                                        |
+    |                                        required by a bound introduced by this call
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `sea_orm::Set`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:55:8
+    |
+ 53 | pub fn Set<V>(v: V) -> ActiveValue<V>
+    |        --- required by a bound in this function
+ 54 | where
+ 55 |     V: Into<Value>,
+    |        ^^^^^^^^^^^ required by this bound in `Set`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/db/devices.rs:284:40
+    |
+284 |                     eth0.mac_address = Set(Some(crate::models::types::MacAddress(mac)));
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+    |
+ 39 | pub enum ActiveValue<V>
+    |          ----------- required by a bound in this enum
+ 40 | where
+ 41 |     V: Into<Value>,
+    |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/db/devices.rs:292:38
+    |
+292 |                         mac_address: Set(Some(crate::models::types::MacAddress(mac))),
+    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+    |
+ 39 | pub enum ActiveValue<V>
+    |          ----------- required by a bound in this enum
+ 40 | where
+ 41 |     V: Into<Value>,
+    |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/db/devices.rs:292:42
+    |
+292 |                         mac_address: Set(Some(crate::models::types::MacAddress(mac))),
+    |                                      --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |                                      |
+    |                                      required by a bound introduced by this call
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `sea_orm::Set`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:55:8
+    |
+ 53 | pub fn Set<V>(v: V) -> ActiveValue<V>
+    |        --- required by a bound in this function
+ 54 | where
+ 55 |     V: Into<Value>,
+    |        ^^^^^^^^^^^ required by this bound in `Set`
+
+error[E0599]: no method named `parse` found for struct `models::types::MacAddress` in the current scope
+  --> src/db/interfaces.rs:66:59
+   |
+66 |                 mac_address: i.mac_address.and_then(|s| s.parse().ok()),
+   |                                                           ^^^^^ method not found in `models::types::MacAddress`
+   |
+  ::: src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | --------------------- method `parse` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `parse`, perhaps you need to implement one of them:
+           candidate #1: `nom::internal::Parser`
+           candidate #2: `nom::sequence::Tuple`
+           candidate #3: `parsing::parsable::sealed::Sealed`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+ --> src/entities/interfaces.rs:5:35
+  |
+5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+ --> src/models/types.rs:9:1
+  |
+9 | pub struct MacAddress(pub mac_address::MacAddress);
+  | ^^^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `Nullable`:
+            &str
+            Braced
+            Hyphenated
+            JsonValue
+            NaiveDate
+            NaiveDateTime
+            NaiveTime
+            OffsetDateTime
+          and 26 others
+  = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+  = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+  = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `ValueType`
+note: required by a bound in `sea_orm::Value::unwrap`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:310:12
+    |
+308 |     pub fn unwrap<T>(self) -> T
+    |            ------ required by a bound in this associated function
+309 |     where
+310 |         T: ValueType,
+    |            ^^^^^^^^^ required by this bound in `Value::unwrap`
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/interfaces.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+39 | pub enum ActiveValue<V>
+   |          ----------- required by a bound in this enum
+40 | where
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+ --> src/entities/interfaces.rs:5:35
+  |
+5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+ --> src/models/types.rs:9:1
+  |
+9 | pub struct MacAddress(pub mac_address::MacAddress);
+  | ^^^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `Nullable`:
+            &str
+            Braced
+            Hyphenated
+            JsonValue
+            NaiveDate
+            NaiveDateTime
+            NaiveTime
+            OffsetDateTime
+          and 26 others
+  = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+  = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+  = note: required for `ActiveValue<std::option::Option<models::types::MacAddress>>` to implement `std::fmt::Debug`
+  = note: required for the cast from `&ActiveValue<std::option::Option<models::types::MacAddress>>` to `&dyn std::fmt::Debug`
+
+error[E0369]: binary operation `==` cannot be applied to type `ActiveValue<std::option::Option<models::types::MacAddress>>`
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^
+    |
+note: an implementation of `Nullable` might be missing for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^ must implement `Nullable`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0599]: the method `into_wrapped_value` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `clone` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:39:1
+    |
+ 39 | pub enum ActiveValue<V>
+    | ----------------------- doesn't satisfy `_: Clone`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+            which is required by `ActiveValue<std::option::Option<models::types::MacAddress>>: Clone`
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `is_not_set` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `reset` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/interfaces.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `NotSet`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `NotSet`
+...
+48 |     NotSet,
+   |     ------ required by a bound in this unit variant
+   = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `into_value` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/interfaces.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+ --> src/entities/ip_addresses.rs:5:35
+  |
+5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+ --> src/models/types.rs:9:1
+  |
+9 | pub struct MacAddress(pub mac_address::MacAddress);
+  | ^^^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `Nullable`:
+            &str
+            Braced
+            Hyphenated
+            JsonValue
+            NaiveDate
+            NaiveDateTime
+            NaiveTime
+            OffsetDateTime
+          and 26 others
+  = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+  = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+  = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `Nullable`:
+              &str
+              Braced
+              Hyphenated
+              JsonValue
+              NaiveDate
+              NaiveDateTime
+              NaiveTime
+              OffsetDateTime
+            and 26 others
+    = note: required for `std::option::Option<models::types::MacAddress>` to implement `ValueType`
+note: required by a bound in `sea_orm::Value::unwrap`
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:310:12
+    |
+308 |     pub fn unwrap<T>(self) -> T
+    |            ------ required by a bound in this associated function
+309 |     where
+310 |         T: ValueType,
+    |            ^^^^^^^^^ required by this bound in `Value::unwrap`
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/ip_addresses.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `ActiveValue`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+39 | pub enum ActiveValue<V>
+   |          ----------- required by a bound in this enum
+40 | where
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+ --> src/entities/ip_addresses.rs:5:35
+  |
+5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+  |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+ --> src/models/types.rs:9:1
+  |
+9 | pub struct MacAddress(pub mac_address::MacAddress);
+  | ^^^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `Nullable`:
+            &str
+            Braced
+            Hyphenated
+            JsonValue
+            NaiveDate
+            NaiveDateTime
+            NaiveTime
+            OffsetDateTime
+          and 26 others
+  = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+  = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+  = note: required for `ActiveValue<std::option::Option<models::types::MacAddress>>` to implement `std::fmt::Debug`
+  = note: required for the cast from `&ActiveValue<std::option::Option<models::types::MacAddress>>` to `&dyn std::fmt::Debug`
+
+error[E0369]: binary operation `==` cannot be applied to type `ActiveValue<std::option::Option<models::types::MacAddress>>`
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^
+    |
+note: an implementation of `Nullable` might be missing for `models::types::MacAddress`
+   --> src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | ^^^^^^^^^^^^^^^^^^^^^ must implement `Nullable`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0599]: the method `into_wrapped_value` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `clone` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:39:1
+    |
+ 39 | pub enum ActiveValue<V>
+    | ----------------------- doesn't satisfy `_: Clone`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+            which is required by `ActiveValue<std::option::Option<models::types::MacAddress>>: Clone`
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `is_not_set` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `reset` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `models::types::MacAddress: Nullable` is not satisfied
+  --> src/entities/ip_addresses.rs:5:35
+   |
+ 5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Nullable` is not implemented for `models::types::MacAddress`
+  --> src/models/types.rs:9:1
+   |
+ 9 | pub struct MacAddress(pub mac_address::MacAddress);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Nullable`:
+             &str
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+           and 26 others
+   = note: required for `sea_orm::Value` to implement `From<std::option::Option<models::types::MacAddress>>`
+   = note: required for `std::option::Option<models::types::MacAddress>` to implement `Into<sea_orm::Value>`
+note: required by a bound in `NotSet`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/entity/active_model.rs:41:8
+   |
+41 |     V: Into<Value>,
+   |        ^^^^^^^^^^^ required by this bound in `NotSet`
+...
+48 |     NotSet,
+   |     ------ required by a bound in this unit variant
+   = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `into_value` exists for enum `ActiveValue<std::option::Option<models::types::MacAddress>>`, but its trait bounds were not satisfied
+   --> src/entities/ip_addresses.rs:5:35
+    |
+  5 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+    |                                   ^^^^^^^^^^^^^^^^^
+    |
+   ::: /Users/michal/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:594:1
+    |
+594 | pub enum Option<T> {
+    | ------------------ doesn't satisfy `_: Into<Value>`
+    |
+   ::: src/models/types.rs:9:1
+    |
+  9 | pub struct MacAddress(pub mac_address::MacAddress);
+    | --------------------- doesn't satisfy `models::types::MacAddress: Nullable`
+    |
+    = note: the following trait bounds were not satisfied:
+            `models::types::MacAddress: Nullable`
+            which is required by `std::option::Option<models::types::MacAddress>: Into<sea_orm::Value>`
+note: the trait `Nullable` must be implemented
+   --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-query-0.30.7/src/value.rs:303:1
+    |
+303 | pub trait Nullable {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> src/models/types.rs:19:60
+   |
+18 |     fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+   |                   - found this type parameter
+19 |         let val: mac_address::MacAddress = res.try_get("", idx).map_err(|e| {
+   |                                                -------     ^^^ expected `&str`, found type parameter `I`
+   |                                                |
+   |                                                arguments to this method are incorrect
+   |
+   = note:   expected reference `&str`
+           found type parameter `I`
+note: method defined here
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/executor/query.rs:88:12
+   |
+88 |     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
+   |            ^^^^^^^
+
+error[E0308]: mismatched types
+  --> src/models/types.rs:20:67
+   |
+20 |             TryGetError::DbErr(DbErr::Query(RuntimeErr::SqlxError(e)))
+   |                                             --------------------- ^ expected `Error`, found `DbErr`
+   |                                             |
+   |                                             arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/error.rs:95:5
+   |
+95 |     SqlxError(#[source] sqlx::error::Error),
+   |     ^^^^^^^^^
+
+error[E0277]: the trait bound `mac_address::MacAddress: sea_orm::TryGetable` is not satisfied
+  --> src/models/types.rs:19:48
+   |
+19 |         let val: mac_address::MacAddress = res.try_get("", idx).map_err(|e| {
+   |                                                ^^^^^^^ the trait `TryGetableFromJson` is not implemented for `mac_address::MacAddress`
+   |
+   = help: the following other types implement trait `sea_orm::TryGetable`:
+             Braced
+             Hyphenated
+             JsonValue
+             NaiveDate
+             NaiveDateTime
+             NaiveTime
+             OffsetDateTime
+             PrimitiveDateTime
+           and 53 others
+   = note: required for `mac_address::MacAddress` to implement `sea_orm::TryGetable`
+note: required by a bound in `QueryResult::try_get`
+  --> /Users/michal/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sea-orm-0.12.15/src/executor/query.rs:90:12
+   |
+88 |     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
+   |            ------- required by a bound in this associated function
+89 |     where
+90 |         T: TryGetable,
+   |            ^^^^^^^^^^ required by this bound in `QueryResult::try_get`
+
+error[E0277]: the trait bound `SeaRc<dyn sea_orm::Iden>: From<&str>` is not satisfied
+  --> src/models/types.rs:48:58
+   |
+48 |         sea_orm::sea_query::ColumnType::Custom("macaddr".into())
+   |                                                          ^^^^ the trait `From<&str>` is not implemented for `SeaRc<dyn sea_orm::Iden>`
+   |
+   = note: required for `&str` to implement `Into<SeaRc<dyn sea_orm::Iden>>`
+
+warning: unused import: `sea_orm::entity::prelude`
+ --> src/models/types.rs:3:5
+  |
+3 | use sea_orm::entity::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ColumnTrait`
+ --> src/integrations/mod.rs:4:51
+  |
+4 | use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter, ModelTrait, QuerySelect};
+  |                                                   ^^^^^^^^^^^
+
+Some errors have detailed explanations: E0277, E0308, E0369, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `homelab_manager` (lib) generated 8 warnings
+error: could not compile `homelab_manager` (lib) due to 44 previous errors; 8 warnings emitted

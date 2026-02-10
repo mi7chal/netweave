@@ -1,13 +1,19 @@
 use super::Db;
-use crate::entities::{devices, interfaces};
-use crate::models::{CreateDevicePayload, Device, DeviceType};
+use crate::entities::{devices, interfaces, ip_addresses};
+use crate::models::{
+    CreateDevicePayload, Device, DeviceDetails, DeviceListView, DeviceType, InterfaceWithIps,
+};
 use sea_orm::*;
-use sea_orm::{QuerySelect, QueryOrder};
-use sea_orm::sea_query::{Expr, Alias};
+use sea_orm::{QueryOrder, QuerySelect};
+use sea_orm::sea_query::{Alias, Expr};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 impl Db {
-    pub async fn list_devices(&self, search: Option<String>) -> Result<Vec<Device>, anyhow::Error> {
+    pub async fn list_devices(
+        &self,
+        search: Option<String>,
+    ) -> Result<Vec<DeviceListView>, anyhow::Error> {
         let search = search.unwrap_or_default().to_lowercase();
 
         let mut query = devices::Entity::find();
@@ -22,12 +28,64 @@ impl Db {
             );
         }
 
-        let devices = query
+        let devices_models = query
             .order_by_asc(devices::Column::Hostname)
             .all(&self.conn)
             .await?;
 
-        Ok(devices
+        if devices_models.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let device_ids: Vec<Uuid> = devices_models.iter().map(|d| d.id).collect();
+
+        // Fetch primary interfaces (eth0)
+        let interfaces_models = interfaces::Entity::find()
+            .filter(interfaces::Column::DeviceId.is_in(device_ids))
+            .filter(interfaces::Column::Name.eq("eth0"))
+            .select_only()
+            .column(interfaces::Column::Id)
+            .column(interfaces::Column::DeviceId)
+            .column(interfaces::Column::Name)
+            .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+            .column(interfaces::Column::Type)
+            .column(interfaces::Column::CreatedAt)
+            .into_model::<interfaces::Model>()
+            .all(&self.conn)
+            .await?;
+
+        let interface_ids: Vec<Uuid> = interfaces_models.iter().map(|i| i.id).collect();
+        // Map device_id -> Interface
+        let mut device_interface_map = HashMap::new();
+        for i in &interfaces_models {
+            device_interface_map.insert(i.device_id, i);
+        }
+
+        // Fetch primary IPs for these interfaces
+        let mut interface_ip_map = HashMap::new();
+        if !interface_ids.is_empty() {
+            let ips_models = ip_addresses::Entity::find()
+                .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+                .select_only()
+                .column(ip_addresses::Column::Id)
+                .column(ip_addresses::Column::InterfaceId)
+                .column(ip_addresses::Column::NetworkId)
+                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::IpAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "ip_address")
+                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+                .column(ip_addresses::Column::IsStatic)
+                .column(ip_addresses::Column::Status)
+                .column(ip_addresses::Column::Description)
+                .into_model::<ip_addresses::Model>()
+                .all(&self.conn)
+                .await?;
+
+            for ip in ips_models {
+                // Just take the first one found for the interface
+                interface_ip_map.entry(ip.interface_id.unwrap()).or_insert(ip);
+            }
+        }
+
+        Ok(devices_models
             .into_iter()
             .map(|d| {
                 let dt = match d.r#type.as_str() {
@@ -40,48 +98,138 @@ impl Db {
                     "ROUTER" => DeviceType::Router,
                     _ => DeviceType::Other,
                 };
-                Device {
+                
+                let primary_interface = device_interface_map.get(&d.id);
+                let mac_address = primary_interface
+                    .and_then(|i| i.mac_address.as_ref().map(|m| m.0));
+
+                let primary_ip = primary_interface
+                    .and_then(|i| interface_ip_map.get(&i.id))
+                    .and_then(|ip| ip.ip_address.split('/').next().unwrap_or("").parse().ok());
+
+                DeviceListView {
                     id: d.id,
-                    parent_device_id: d.parent_device_id,
                     hostname: d.hostname,
                     device_type: dt,
-                    cpu_cores: d.cpu_cores,
-                    ram_gb: d.ram_gb,
-                    storage_gb: d.storage_gb,
                     os_info: d.os_info,
-                    meta_data: d.meta_data,
                     created_at: d.created_at.into(),
+                    primary_ip,
+                    mac_address,
                 }
             })
             .collect())
     }
 
-    pub async fn get_device(&self, id: Uuid) -> Result<Option<Device>, anyhow::Error> {
-        let device = devices::Entity::find_by_id(id).one(&self.conn).await?;
+    pub async fn get_device_details(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<DeviceDetails>, anyhow::Error> {
+        let device_model = devices::Entity::find_by_id(id).one(&self.conn).await?;
 
-        Ok(device.map(|d| {
-            let dt = match d.r#type.as_str() {
-                "PHYSICAL" => DeviceType::Physical,
-                "VM" => DeviceType::Vm,
-                "LXC" => DeviceType::Lxc,
-                "CONTAINER" => DeviceType::Container,
-                "SWITCH" => DeviceType::Switch,
-                "AP" => DeviceType::Ap,
-                "ROUTER" => DeviceType::Router,
-                _ => DeviceType::Other,
-            };
-            Device {
-                id: d.id,
-                parent_device_id: d.parent_device_id,
-                hostname: d.hostname,
-                device_type: dt,
-                cpu_cores: d.cpu_cores,
-                ram_gb: d.ram_gb,
-                storage_gb: d.storage_gb,
-                os_info: d.os_info,
-                meta_data: d.meta_data,
-                created_at: d.created_at.into(),
+        let d = match device_model {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+
+        // Fetch all interfaces
+        let interfaces_models = interfaces::Entity::find()
+            .filter(interfaces::Column::DeviceId.eq(d.id))
+            .select_only()
+            .column(interfaces::Column::Id)
+            .column(interfaces::Column::DeviceId)
+            .column(interfaces::Column::Name)
+            .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+            .column(interfaces::Column::Type)
+            .column(interfaces::Column::CreatedAt)
+            .into_model::<interfaces::Model>()
+            .all(&self.conn)
+            .await?;
+
+        // Fetch all IPs for these interfaces
+        let interface_ids: Vec<Uuid> = interfaces_models.iter().map(|i| i.id).collect();
+        let mut ips_map: HashMap<Uuid, Vec<crate::models::IpAddress>> = HashMap::new();
+
+        if !interface_ids.is_empty() {
+             let ips_models = ip_addresses::Entity::find()
+                .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
+                .select_only()
+                .column(ip_addresses::Column::Id)
+                .column(ip_addresses::Column::InterfaceId)
+                .column(ip_addresses::Column::NetworkId)
+                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::IpAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "ip_address")
+                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
+                .column(ip_addresses::Column::IsStatic)
+                .column(ip_addresses::Column::Status)
+                .column(ip_addresses::Column::Description)
+                .into_model::<ip_addresses::Model>()
+                .all(&self.conn)
+                .await?;
+            
+            for ip in ips_models {
+                let pid = ip.interface_id.unwrap();
+                let status = match ip.status.as_str() {
+                    "ACTIVE" => crate::models::IpStatus::Active,
+                    "RESERVED" => crate::models::IpStatus::Reserved,
+                    "DHCP" => crate::models::IpStatus::Dhcp,
+                     _ => crate::models::IpStatus::Active, // Default
+                };
+
+                let ip_entity = crate::models::IpAddress {
+                    id: ip.id,
+                    network_id: ip.network_id,
+                    interface_id: ip.interface_id,
+                    ip_address: ip.ip_address.split('/').next().unwrap_or("").parse().unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                    mac_address: ip.mac_address.map(|m| m.0),
+                    status,
+                    description: ip.description,
+                    is_static: ip.is_static,
+                };
+
+                ips_map.entry(pid).or_default().push(ip_entity);
             }
+        }
+
+        let dt = match d.r#type.as_str() {
+            "PHYSICAL" => DeviceType::Physical,
+            "VM" => DeviceType::Vm,
+            "LXC" => DeviceType::Lxc,
+            "CONTAINER" => DeviceType::Container,
+            "SWITCH" => DeviceType::Switch,
+            "AP" => DeviceType::Ap,
+            "ROUTER" => DeviceType::Router,
+            _ => DeviceType::Other,
+        };
+
+        let device_entity = Device {
+            id: d.id,
+            parent_device_id: d.parent_device_id,
+            hostname: d.hostname,
+            device_type: dt,
+            cpu_cores: d.cpu_cores,
+            ram_gb: d.ram_gb,
+            storage_gb: d.storage_gb,
+            os_info: d.os_info,
+            meta_data: d.meta_data,
+            created_at: d.created_at.into(),
+        };
+
+        let interfaces_with_ips = interfaces_models.into_iter().map(|i| {
+             let interface_entity = crate::models::Interface {
+                id: i.id,
+                device_id: i.device_id,
+                name: i.name,
+                mac_address: i.mac_address.map(|m| m.0),
+                interface_type: i.r#type,
+            };
+            InterfaceWithIps {
+                interface: interface_entity,
+                ips: ips_map.remove(&i.id).unwrap_or_default(),
+            }
+        }).collect();
+
+        Ok(Some(DeviceDetails {
+            device: device_entity,
+            interfaces: interfaces_with_ips,
         }))
     }
 
@@ -155,38 +303,35 @@ impl Db {
         device.storage_gb = Set(params.storage_gb);
 
         device.update(&txn).await?;
-
+        
         // Update eth0 mac if provided
-        if let Some(mac) = params.mac_address {
-            // Try find existing eth0
-            let eth0 = interfaces::Entity::find()
-                .select_only()
-                .column(interfaces::Column::Id)
-                .column(interfaces::Column::DeviceId)
-                .column(interfaces::Column::Name)
-                .column_as(Expr::col(interfaces::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
-                .column(interfaces::Column::Type)
-                .column(interfaces::Column::CreatedAt)
-                .filter(interfaces::Column::DeviceId.eq(id))
-                .filter(interfaces::Column::Name.eq("eth0"))
-                .into_model::<interfaces::Model>()
-                .one(&txn) // use &txn here
-                .await?;
+        if let Some(mac_str) = params.mac_address {
+            // Try parsing first
+            if let Ok(mac) = mac_str.parse::<mac_address::MacAddress>() {
+                // Try find existing eth0
+                let eth0 = interfaces::Entity::find()
+                    .filter(interfaces::Column::DeviceId.eq(id))
+                    .filter(interfaces::Column::Name.eq("eth0"))
+                    .one(&txn) 
+                    .await?;
 
-            if let Some(eth0_model) = eth0 {
-                let mut eth0: interfaces::ActiveModel = eth0_model.into();
-                eth0.mac_address = Set(Some(mac));
-                eth0.update(&txn).await?;
-            } else if !mac.is_empty() {
-                // create if missing?
-                let interface = interfaces::ActiveModel {
-                    id: Set(Uuid::now_v7()),
-                    device_id: Set(id),
-                    name: Set("eth0".to_string()),
-                    mac_address: Set(Some(mac)),
-                    ..Default::default()
-                };
-                interface.insert(&txn).await?;
+                if let Some(eth0_model) = eth0 {
+                    let mut eth0: interfaces::ActiveModel = eth0_model.into();
+                    eth0.mac_address = Set(Some(crate::models::types::MacAddress(mac)));
+                    eth0.update(&txn).await?;
+                } else {
+                    // create if missing
+                    let interface = interfaces::ActiveModel {
+                        id: Set(Uuid::now_v7()),
+                        device_id: Set(id),
+                        name: Set("eth0".to_string()),
+                        mac_address: Set(Some(crate::models::types::MacAddress(mac))),
+                        r#type: Set(Some("ethernet".to_string())),
+                        created_at: Set(chrono::Utc::now().into()),
+                        ..Default::default()
+                    };
+                    interface.insert(&txn).await?;
+                }
             }
         }
 

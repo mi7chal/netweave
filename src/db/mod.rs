@@ -25,6 +25,7 @@ pub struct CreateNetworkParams {
 pub struct CreateIpParams {
     pub network_id: Uuid,
     pub device_id: Option<Uuid>,
+    pub interface_id: Option<Uuid>,
     pub ip_address: std::net::IpAddr,
     pub mac_address: Option<mac_address::MacAddress>,
     pub is_static: bool,

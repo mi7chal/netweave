@@ -1,3 +1,4 @@
+use crate::models::types::MacAddress;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ pub struct Model {
     pub id: Uuid,
     pub device_id: Uuid,
     pub name: String,
-    pub mac_address: Option<String>,
+    pub mac_address: Option<MacAddress>,
     pub r#type: Option<String>,
     pub created_at: DateTimeWithTimeZone,
 }

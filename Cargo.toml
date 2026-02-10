@@ -5,26 +5,41 @@ edition = "2021"
 
 [dependencies]
 # Web Framework
-axum = "0.7" # Stable version
+axum = "0.7"                                                         # Stable version
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "ipnetwork", "json", "chrono", "mac_address"] }
-sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-uuid", "with-time", "with-json"] }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "ipnetwork",
+    "json",
+    "chrono",
+    "mac_address",
+] }
+sea-orm = { version = "1.1", features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-uuid",
+    "with-time",
+    "with-json",
+] }
 
 # Serialization & Data
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9" # Added for YAML config support
+serde_yaml = "0.9"                                      # Added for YAML config support
 uuid = { version = "1", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 mac_address = { version = "1.1", features = ["serde"] }
 
 # Auth
 tower-sessions = "0.10"
-openidconnect = "3.4" # OIDC Support
+openidconnect = "3.4"   # OIDC Support
 bcrypt = "0.15"
 anyhow = "1.0"
 
@@ -32,11 +47,14 @@ anyhow = "1.0"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.11", features = ["json", "rustls-tls", "cookies"] } # For Integrations
+reqwest = { version = "0.11", features = [
+    "json",
+    "rustls-tls",
+    "cookies",
+] } # For Integrations
 async-trait = "0.1.89"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
 rand = "0.8.5"
 hex = "0.4.3"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
-

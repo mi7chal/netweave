@@ -1,0 +1,13 @@
+    Checking homelab_manager v0.1.0 (/Users/michal/Development/homelab_manager)
+error: unexpected closing delimiter: `}`
+  --> src/models/types.rs:37:1
+   |
+23 |     fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+   |                                                                                               - this opening brace...
+...
+36 |     }
+   |     - ...matches this closing brace
+37 | }
+   | ^ unexpected closing delimiter
+
+error: could not compile `homelab_manager` (lib) due to 1 previous error

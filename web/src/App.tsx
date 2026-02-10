@@ -4,6 +4,8 @@ import { Integrations } from './pages/Integrations';
 import { Services } from './pages/Services';
 import { Networks } from './pages/Networks';
 import { Devices } from './pages/Devices';
+import { DeviceDetailsPage } from './pages/DeviceDetails';
+
 
 function App() {
   return (
@@ -13,7 +15,9 @@ function App() {
       <Route path="/integrations" element={<Integrations />} />
       <Route path="/services" element={<Services />} />
       <Route path="/networks" element={<Networks />} />
+      <Route path="/networks" element={<Networks />} />
       <Route path="/devices" element={<Devices />} />
+      <Route path="/devices/:id" element={<DeviceDetailsPage />} />
     </Routes>
   )
 }
