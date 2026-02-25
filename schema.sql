@@ -101,6 +101,10 @@ CREATE TABLE IF NOT EXISTS services (
     health_endpoint VARCHAR(100),
     monitor_interval_seconds INT DEFAULT 600, -- 10 minutes
 
+    -- uptime tracking
+    total_checks INT DEFAULT 0,
+    successful_checks INT DEFAULT 0,
+
     is_public BOOLEAN DEFAULT FALSE
 );
 

@@ -71,55 +71,55 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle>Add Integration</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Add Integration</DialogTitle>
+                    <DialogDescription className="text-muted-foreground/80">
                         Connect external services to import data.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
+                <div className="grid gap-4 py-6">
+                    <div className="grid gap-2">
+                        <Label htmlFor="name" className="text-sm font-medium">
                             Name
                         </Label>
                         <Input
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="col-span-3"
+                            className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
                             placeholder="Home AdGuard"
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="type" className="text-right">
+                    <div className="grid gap-2">
+                        <Label htmlFor="type" className="text-sm font-medium">
                             Type
                         </Label>
                         <Select value={providerType} onValueChange={setProviderType}>
-                            <SelectTrigger className="col-span-3">
+                            <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 rounded-lg transition-all">
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ADGUARD">AdGuard Home</SelectItem>
-                                <SelectItem value="UNIFI">Unifi Controller</SelectItem>
-                                <SelectItem value="KEA">Kea DHCP</SelectItem>
+                            <SelectContent className="bg-card/90 backdrop-blur-xl border-border/40 shadow-xl">
+                                <SelectItem value="ADGUARD" className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer rounded-md mx-1 my-0.5">AdGuard Home</SelectItem>
+                                <SelectItem value="UNIFI" className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer rounded-md mx-1 my-0.5">Unifi Controller</SelectItem>
+                                <SelectItem value="KEA" className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer rounded-md mx-1 my-0.5">Kea DHCP</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="url" className="text-right">
+                    <div className="grid gap-2">
+                        <Label htmlFor="url" className="text-sm font-medium">
                             URL
                         </Label>
                         <Input
                             id="url"
                             value={baseUrl}
                             onChange={(e) => setBaseUrl(e.target.value)}
-                            className="col-span-3"
+                            className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
                             placeholder="http://192.168.1.5"
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="key" className="text-right">
+                    <div className="grid gap-2">
+                        <Label htmlFor="key" className="text-sm font-medium">
                             API Key
                         </Label>
                         <Input
@@ -127,12 +127,12 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
                             type="password"
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
-                            className="col-span-3"
+                            className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
                             placeholder="Secret..."
                         />
                     </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="border-t border-border/20 pt-4 mt-2">
                     <Button type="submit" onClick={handleSubmit} disabled={loading}>
                         {loading ? "Adding..." : "Add Integration"}
                     </Button>

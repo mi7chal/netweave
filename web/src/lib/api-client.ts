@@ -21,7 +21,9 @@ export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T
                     errorBody === "" ||
                     errorBody.includes("ECONNREFUSED") ||
                     errorBody.includes("proxy error") ||
-                    errorBody.includes("AggregateError")
+                    errorBody.includes("AggregateError") ||
+                    errorBody.includes("Failed to acquire connection from pool") ||
+                    errorBody.includes("Connection pool timed out")
                 ))) {
                 if (onBackendDown) onBackendDown();
             }
@@ -39,7 +41,7 @@ export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T
             throw new Error(errorMessage);
         }
 
-        if (response.status === 204) {
+        if (response.status === 204 || response.status === 202) {
             return {} as T;
         }
 

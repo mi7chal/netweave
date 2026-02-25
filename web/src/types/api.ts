@@ -8,6 +8,9 @@ export interface Service {
     is_public: boolean;
     status: ServiceStatus;
     last_check: string | null;
+    total_checks: number;
+    successful_checks: number;
+    uptime_percentage: number;
 }
 
 export type ServiceStatus = "UP" | "DOWN" | "UNKNOWN" | "MAINTENANCE";
@@ -92,6 +95,7 @@ export interface DeviceDetails {
     os_info: string | null;
     created_at: string;
     interfaces: InterfaceWithIps[];
+    services: Service[];
 }
 
 export interface CreateDevicePayload {

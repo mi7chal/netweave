@@ -61,6 +61,8 @@ pub struct Service {
     pub base_url: String,
     pub health_endpoint: Option<String>,
     pub monitor_interval_seconds: Option<i32>,
+    pub total_checks: Option<i32>,
+    pub successful_checks: Option<i32>,
     pub is_public: Option<bool>,
 }
 
@@ -70,7 +72,10 @@ pub struct DashboardService {
     pub name: String,
     pub base_url: String,
     pub is_public: bool,
+    pub total_checks: i32,
+    pub successful_checks: i32,
     pub device_hostname: String,
+    pub device_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -113,6 +118,7 @@ pub struct DeviceDetails {
     #[serde(flatten)]
     pub device: Device,
     pub interfaces: Vec<InterfaceWithIps>,
+    pub services: Vec<Service>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

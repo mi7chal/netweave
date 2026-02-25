@@ -35,7 +35,7 @@ pub async fn run_sync_task(state: AppState) {
         if let Err(e) = sync_all_integrations(&state).await {
             tracing::error!("Integration sync cycle failed: {}", e);
         }
-        sleep(Duration::from_secs(60)).await;
+        sleep(Duration::from_secs(3600)).await;
     }
 }
 

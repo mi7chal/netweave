@@ -1,5 +1,5 @@
 use super::Db;
-use crate::entities::{devices, interfaces, ip_addresses};
+use crate::entities::{devices, interfaces, ip_addresses, services};
 use crate::models::{
     CreateDevicePayload, Device, DeviceDetails, DeviceListView, DeviceType, InterfaceWithIps,
 };
@@ -20,12 +20,30 @@ impl Db {
 
         if !search.is_empty() {
             let s = format!("%{}%", search);
-            query = query.filter(
-                Condition::any()
-                    .add(devices::Column::Hostname.like(&s))
-                    .add(devices::Column::Type.like(&s))
-                    .add(devices::Column::OsInfo.like(&s)),
-            );
+            
+            // Allow casting INET/MACADDR to text for LIKE search
+            let mac_cast = Expr::col(interfaces::Column::MacAddress).cast_as(Alias::new("text"));
+            let ip_cast = Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text"));
+
+            query = query
+                .join(
+                    sea_orm::JoinType::LeftJoin,
+                    devices::Relation::Interfaces.def()
+                )
+                .join(
+                    sea_orm::JoinType::LeftJoin,
+                    ip_addresses::Relation::Interface.def().rev()
+                )
+                .filter(
+                    Condition::any()
+                        .add(devices::Column::Hostname.like(&s))
+                        .add(devices::Column::Type.like(&s))
+                        .add(devices::Column::OsInfo.like(&s))
+                        .add(mac_cast.clone().like(&s))
+                        .add(ip_cast.clone().like(&s))
+                )
+                // Group by to avoid duplicates since we're joining 1-to-many relationships
+                .group_by(devices::Column::Id);
         }
 
         let devices_models = query
@@ -227,9 +245,28 @@ impl Db {
             }
         }).collect();
 
+        // Fetch services for this device
+        let services_models = services::Entity::find()
+            .filter(services::Column::DeviceId.eq(d.id))
+            .all(&self.conn)
+            .await?;
+
+        let services = services_models.into_iter().map(|s| crate::models::Service {
+            id: s.id,
+            device_id: s.device_id,
+            name: s.name,
+            base_url: s.base_url,
+            health_endpoint: s.health_endpoint,
+            monitor_interval_seconds: s.monitor_interval_seconds,
+            total_checks: s.total_checks,
+            successful_checks: s.successful_checks,
+            is_public: s.is_public,
+        }).collect();
+
         Ok(Some(DeviceDetails {
             device: device_entity,
             interfaces: interfaces_with_ips,
+            services,
         }))
     }
 

@@ -1,5 +1,6 @@
 use crate::AppState;
 use crate::ServiceStatus;
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -32,21 +33,27 @@ async fn check_all_services(state: &AppState, client: &reqwest::Client) -> anyho
         let url = service.base_url; // + health_endpoint if available?
                                     // simple check: GET url
 
-        let status = match client.get(&url).send().await {
+        let (status, is_success) = match client.get(&url).send().await {
             Ok(res) => {
                 if res.status().is_success() {
-                    ServiceStatus::Up
+                    (ServiceStatus::Up, true)
                 } else {
-                    ServiceStatus::Down
+                    (ServiceStatus::Down, false)
                 }
             }
-            Err(_) => ServiceStatus::Down,
+            Err(_) => (ServiceStatus::Down, false),
         };
 
         // Update status in shared state
         if let Ok(mut statuses) = state.service_statuses.write() {
             statuses.insert(service.id, status);
         }
+
+        // Increment checks inside DB
+        let success_inc = if is_success { 1 } else { 0 };
+        let sql = format!("UPDATE services SET total_checks = COALESCE(total_checks, 0) + 1, successful_checks = COALESCE(successful_checks, 0) + {} WHERE id = '{}'", success_inc, service.id);
+        
+        let _ = state.db.conn.execute(Statement::from_string(DatabaseBackend::Postgres, sql)).await;
     }
     Ok(())
 }

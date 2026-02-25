@@ -29,6 +29,8 @@ pub enum Relation {
     SelfRef,
     #[sea_orm(has_many = "super::services::Entity")]
     Services,
+    #[sea_orm(has_many = "super::interfaces::Entity")]
+    Interfaces,
 }
 
 pub struct SelfRefLink;
@@ -45,6 +47,12 @@ impl Linked for SelfRefLink {
 impl Related<super::services::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Services.def()
+    }
+}
+
+impl Related<super::interfaces::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Interfaces.def()
     }
 }
 

@@ -18,13 +18,25 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState, useMemo } from "react";
+import useSWR from "swr";
 import { AppLayout } from "../layouts/AppLayout";
 import { fetchApi } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { SearchInput } from "@/components/SearchInput";
+import { PageHeader } from "@/components/PageHeader";
+import type { DeviceListView } from "../types/api";
 
 interface Service {
     id: string;
@@ -34,38 +46,35 @@ interface Service {
     is_public: boolean;
     monitor_interval_seconds?: number;
     status: string;
+    uptime_percentage?: number;
+    device_id?: string;
 }
 
 export const Services = () => {
-    const [services, setServices] = useState<Service[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data, isLoading, mutate } = useSWR<{ services: Service[] }>('/api/dashboard', fetchApi, { refreshInterval: 10000 });
+    const { data: devices = [] } = useSWR<DeviceListView[]>('/api/devices', fetchApi);
+    const services = data?.services || [];
+
+    const [search, setSearch] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [formData, setFormData] = useState<Partial<Service>>({});
 
-    const fetchServices = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const data = await fetchApi<{ services: Service[] }>('/api/dashboard');
-            setServices(data.services || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    const filteredServices = useMemo(() => {
+        if (!search.trim()) return services;
+        const q = search.toLowerCase();
+        return services.filter(s =>
+            s.name.toLowerCase().includes(q) ||
+            s.base_url.toLowerCase().includes(q)
+        );
+    }, [services, search]);
 
-    useEffect(() => {
-        fetchServices();
-        const interval = setInterval(fetchServices, 10000);
-        return () => clearInterval(interval);
-    }, [fetchServices]);
-
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure?")) return;
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
         try {
             await fetchApi(`/api/services/${id}`, { method: 'DELETE' });
-            fetchServices();
+            mutate();
+            toast.success(`Service deleted`, { description: `${name} has been removed.` });
         } catch (e) {
             console.error(e);
         }
@@ -81,8 +90,9 @@ export const Services = () => {
                 body: JSON.stringify(formData)
             });
 
-            fetchServices();
+            mutate();
             setIsDialogOpen(false);
+            toast.success(`Service saved`, { description: `Successfully saved ${formData.name || 'service'}` });
         } catch (e) {
             console.error(e);
         }
@@ -103,40 +113,48 @@ export const Services = () => {
     return (
         <AppLayout>
             <div className="flex flex-col space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-                        <p className="text-muted-foreground">Manage dashboard shortcuts and monitoring.</p>
-                    </div>
-                    <Button onClick={openCreate}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Service
+                <PageHeader
+                    title="Services"
+                    description="Manage your dashboard applications and their status."
+                >
+                    <SearchInput
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search services..."
+                        className="w-full md:w-64"
+                    />
+                    <Button onClick={openCreate} className="gap-2 shadow-sm rounded-full h-10 px-5 flex-shrink-0 hover:scale-105 transition-all duration-300">
+                        <Plus className="h-4 w-4" /> Add Service
                     </Button>
-                </div>
+                </PageHeader>
 
-                <Card>
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>URL</TableHead>
-                                    <TableHead>Visibility</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">Loading...</TableCell>
+                {isLoading ? (
+                    <div className="text-center py-10 text-muted-foreground animate-pulse font-medium">Loading...</div>
+                ) : services.length === 0 ? (
+                    <div className="text-center py-20 bg-white/40 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-3xl mt-6 shadow-sm">
+                        <Plus className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground">No services found</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Add your first service to track its status.</p>
+                    </div>
+                ) : (
+                    <Card className="border border-white/40 dark:border-white/10 bg-gradient-to-br from-white/60 to-white/30 dark:from-white/10 dark:to-white/5 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden relative">
+                        {/* Glass Reflection Highlight */}
+                        <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-none z-20 rounded-xl" />
+                        <CardContent className="p-0 relative z-10">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-border/30 hover:bg-transparent">
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>URL</TableHead>
+                                        <TableHead>Visibility</TableHead>
+                                        <TableHead>Uptime</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ) : services.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">No services found.</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    services.map((item) => (
-                                        <TableRow key={item.id}>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredServices.map((item) => (
+                                        <TableRow key={item.id} className="border-border/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                             <TableCell className="font-medium">{item.name}</TableCell>
                                             <TableCell>
                                                 <a href={item.base_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
@@ -144,66 +162,100 @@ export const Services = () => {
                                                 </a>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={item.is_public ? "default" : "secondary"}>
+                                                <Badge variant={item.is_public ? "outline" : "secondary"} className="shadow-sm">
                                                     {item.is_public ? "Public" : "Private"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={item.status === "UP" ? "default" : "destructive"} className={cn(
-                                                    item.status === "UP" && "bg-green-500 hover:bg-green-600"
+                                                <div className="flex flex-col">
+                                                    <span className={cn(
+                                                        "text-sm font-medium",
+                                                        (item.uptime_percentage ?? 100) >= 99 ? "text-green-500" :
+                                                            (item.uptime_percentage ?? 100) >= 95 ? "text-amber-500" : "text-destructive"
+                                                    )}>
+                                                        {(item.uptime_percentage ?? 100).toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={item.status === "UP" ? "outline" : item.status === "UNKNOWN" ? "secondary" : "destructive"} className={cn(
+                                                    "shadow-sm",
+                                                    item.status === "UP" && "bg-green-500/10 text-green-500 border-green-500/20",
+                                                    item.status === "UNKNOWN" && "bg-secondary text-muted-foreground"
                                                 )}>
                                                     {item.status}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
+                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
                                                         <Edit2 className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="text-destructive hover:text-destructive">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id, item.name)} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
                         <DialogHeader>
-                            <DialogTitle>{selectedService ? "Edit Service" : "New Service"}</DialogTitle>
-                            <DialogDescription>
+                            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{selectedService ? "Edit Service" : "New Service"}</DialogTitle>
+                            <DialogDescription className="text-muted-foreground/80">
                                 Configure service details and monitoring.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name" className="text-sm font-medium">Name</Label>
                                 <Input
                                     id="name"
                                     placeholder="Plex"
                                     value={formData.name || ""}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="url">URL</Label>
+                                <Label htmlFor="url" className="text-sm font-medium">URL</Label>
                                 <Input
                                     id="url"
                                     placeholder="http://192.168.1.50:32400"
                                     value={formData.base_url || ""}
                                     onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
+                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
                                 />
                             </div>
-                            <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div className="grid gap-2">
+                                <Label className="text-sm font-medium">Link to Device</Label>
+                                <Select
+                                    value={formData.device_id || "none"}
+                                    onValueChange={(val) => setFormData({ ...formData, device_id: val === "none" ? undefined : val })}
+                                >
+                                    <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg">
+                                        <SelectValue placeholder="Select a device (Optional)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
+                                        {devices.map(device => (
+                                            <SelectItem key={device.id} value={device.id}>
+                                                {device.hostname}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4 transition-all hover:bg-secondary/40">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base">Publicly Visible</Label>
-                                    <p className="text-sm text-muted-foreground">
+                                    <Label className="text-base font-medium">Publicly Visible</Label>
+                                    <p className="text-sm text-muted-foreground/80">
                                         Show this service on the public dashboard.
                                     </p>
                                 </div>
@@ -213,8 +265,8 @@ export const Services = () => {
                                 />
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="hover:bg-secondary/60">Cancel</Button>
                             <Button onClick={handleSave}>Save</Button>
                         </DialogFooter>
                     </DialogContent>

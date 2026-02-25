@@ -10,6 +10,7 @@ pub struct DashboardServiceResponse {
     #[serde(flatten)]
     pub service: DashboardService,
     pub status: String,
+    pub uptime_percentage: f64,
 }
 
 #[derive(Serialize)]
@@ -34,9 +35,17 @@ pub async fn show_dashboard(State(state): State<AppState>) -> AppResult<impl Int
                 .get(&s.id)
                 .cloned()
                 .unwrap_or(ServiceStatus::Unknown);
+            
+            let uptime_percentage = if s.total_checks > 0 {
+                (s.successful_checks as f64 / s.total_checks as f64) * 100.0
+            } else {
+                100.0 // Default to 100% until checks run
+            };
+
             DashboardServiceResponse {
                 service: s,
                 status: format!("{:?}", status).to_uppercase(),
+                uptime_percentage,
             }
         })
         .collect();

@@ -21,7 +21,10 @@ impl Db {
                 name: service.name,
                 base_url: service.base_url,
                 is_public: service.is_public.unwrap_or(false),
-                device_hostname: device.map(|d| d.hostname).unwrap_or_default(),
+                total_checks: service.total_checks.unwrap_or(0),
+                successful_checks: service.successful_checks.unwrap_or(0),
+                device_hostname: device.as_ref().map(|d| d.hostname.clone()).unwrap_or_default(),
+                device_id: device.map(|d| d.id),
             })
             .collect();
 
@@ -38,6 +41,8 @@ impl Db {
             base_url: s.base_url,
             health_endpoint: s.health_endpoint,
             monitor_interval_seconds: s.monitor_interval_seconds,
+            total_checks: s.total_checks,
+            successful_checks: s.successful_checks,
             is_public: s.is_public,
         }))
     }
