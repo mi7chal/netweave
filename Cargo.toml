@@ -1,5 +1,5 @@
 [package]
-name = "homelab_manager"
+name = "netweave"
 version = "0.1.0"
 edition = "2021"
 
@@ -58,3 +58,4 @@ base64 = "0.22.1"
 rand = "0.8.5"
 hex = "0.4.3"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
+thiserror = "2.0.18"

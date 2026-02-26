@@ -1,4 +1,4 @@
-use crate::handlers::common::{internal_error, json_response, AppResult, ErrorResponse};
+use crate::handlers::common::{internal_error, json_response, AppResult};
 use crate::models::{CreateServicePayload, DashboardService};
 use crate::{AppState, ServiceStatus};
 use axum::{
@@ -71,12 +71,7 @@ pub async fn get_service(
         .get_service(id)
         .await
         .map_err(internal_error)?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: "Service not found".into(),
-            }),
-        ))?;
+        .ok_or(crate::handlers::common::AppError::NotFound("Service not found".into()))?;
 
     json_response(service)
 }

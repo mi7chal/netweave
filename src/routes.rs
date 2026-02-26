@@ -88,14 +88,14 @@ pub fn create_router(state: AppState) -> Router {
         .route("/devices/:id/interfaces", post(handlers::create_interface))
         .route(
             "/devices/:device_id/interfaces/:interface_id",
-            delete(handlers::delete_interface),
+            delete(handlers::delete_interface).put(handlers::update_interface),
         )
         // Device IPs
         .route("/devices/:id/ips", get(handlers::list_device_ips))
         .route("/devices/:id/ips", post(handlers::assign_ip))
         .route(
             "/devices/:device_id/ips/:ip_id",
-            delete(handlers::delete_ip_assignment),
+            delete(handlers::delete_ip_assignment).put(handlers::update_ip),
         )
         // Networks
         .route(

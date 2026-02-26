@@ -195,4 +195,43 @@ impl Db {
             .await?;
         Ok(res.rows_affected > 0)
     }
+
+    pub async fn update_ip(&self, params: crate::db::UpdateIpParams) -> Result<ip_addresses::Model, anyhow::Error> {
+        let ip = ip_addresses::Entity::find_by_id(params.ip_id)
+            .one(&self.conn)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("IP address not found"))?;
+
+        let mut active_model: ip_addresses::ActiveModel = ip.into();
+
+        if let Some(ip_addr) = params.ip_address {
+            active_model.ip_address = Set(ip_addr.to_string());
+        }
+
+        if let Some(mac) = params.mac_address {
+            active_model.mac_address = Set(mac.map(crate::models::types::MacAddress));
+        }
+
+        if let Some(is_static) = params.is_static {
+            active_model.is_static = Set(is_static);
+        }
+
+        if let Some(status) = params.status {
+            let status_str = match status {
+                IpStatus::Active => "ACTIVE",
+                IpStatus::Reserved => "RESERVED",
+                IpStatus::Dhcp => "DHCP",
+                IpStatus::Deprecated => "DEPRECATED",
+                IpStatus::Free => "FREE",
+            };
+            active_model.status = Set(status_str.to_string());
+        }
+
+        if let Some(desc) = params.description {
+            active_model.description = Set(desc);
+        }
+
+        let updated = active_model.update(&self.conn).await?;
+        Ok(updated)
+    }
 }

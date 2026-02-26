@@ -33,6 +33,16 @@ pub struct CreateIpParams {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct UpdateIpParams {
+    pub ip_id: Uuid,
+    pub ip_address: Option<std::net::IpAddr>,
+    pub mac_address: Option<Option<mac_address::MacAddress>>,
+    pub is_static: Option<bool>,
+    pub status: Option<IpStatus>,
+    pub description: Option<Option<String>>,
+}
+
 /// Database connection wrapper
 ///
 /// It holds pool and basically is created just to implement methods inside specific files.

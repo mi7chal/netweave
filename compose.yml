@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: homelab_manager_db
+    container_name: netweave_db
     environment:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
@@ -18,7 +18,7 @@ services:
   # Only for dev
   pgweb:
     image: sosedoff/pgweb
-    container_name: homelab_manager_pgweb
+    container_name: netweave_pgweb
     ports:
       - "8081:8081"
     environment:

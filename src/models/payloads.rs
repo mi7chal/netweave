@@ -88,6 +88,21 @@ pub struct AssignIpPayload {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
+pub struct UpdateIpPayload {
+    #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]
+    pub ip_address: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]
+    pub mac_address: Option<String>,
+    #[serde(default)]
+    pub is_static: Option<bool>,
+    // allow parsing via custom option wrapper for checkbox
+    #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]
+    pub status: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct CreateNetworkIpPayload {
     pub ip_address: String,
     #[serde(default, deserialize_with = "deserialize_empty_str_as_none")]

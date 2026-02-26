@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+
 import {
     Table,
     TableBody,
@@ -10,15 +10,7 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+
 import { Plus, Trash2, Edit2, Network as NetworkIcon } from "lucide-react";
 import { useState, useMemo } from "react";
 import useSWR from "swr";
@@ -28,14 +20,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { SearchInput } from "@/components/SearchInput";
 import { PageHeader } from "@/components/PageHeader";
 
-interface Network {
-    id: string;
-    name: string;
-    cidr: string;
-    vlan_id?: number;
-    gateway?: string;
-    description?: string;
-}
+import { NetworkDialog, type Network } from "@/components/NetworkDialog";
 
 export const Networks = () => {
     const { data: networks = [], isLoading, mutate } = useSWR<Network[]>('/api/networks', fetchApi);
@@ -43,7 +28,6 @@ export const Networks = () => {
     const [search, setSearch] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
-    const [formData, setFormData] = useState<Partial<Network>>({});
 
     const filteredNetworks = useMemo(() => {
         if (!search.trim()) return networks;
@@ -67,35 +51,18 @@ export const Networks = () => {
         }
     };
 
-    const handleSave = async () => {
-        try {
-            const method = selectedNetwork ? 'PUT' : 'POST';
-            const url = selectedNetwork ? `/api/networks/${selectedNetwork.id}` : '/api/networks';
-
-            await fetchApi(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, vlan_id: formData.vlan_id ? Number(formData.vlan_id) : null })
-            });
-
-            mutate();
-            setIsDialogOpen(false);
-            toast.success("Network saved", { description: "Changes have been safely applied." });
-        } catch (e) {
-            console.error(e);
-            toast.error("Failed to save network", { description: "An error occurred while saving the network." });
-        }
+    const handleSaved = () => {
+        mutate();
+        setIsDialogOpen(false);
     };
 
     const openEdit = (network: Network) => {
         setSelectedNetwork(network);
-        setFormData(network);
         setIsDialogOpen(true);
     };
 
     const openCreate = () => {
         setSelectedNetwork(null);
-        setFormData({});
         setIsDialogOpen(true);
     };
 
@@ -174,75 +141,12 @@ export const Networks = () => {
                     </Card>
                 )}
 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{selectedNetwork ? "Edit Network" : "New Network"}</DialogTitle>
-                            <DialogDescription className="text-muted-foreground/80">
-                                Defines a network segment.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name" className="text-sm font-medium">Name</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="Home LAN"
-                                    value={formData.name || ""}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="cidr" className="text-sm font-medium">CIDR</Label>
-                                <Input
-                                    id="cidr"
-                                    placeholder="192.168.1.0/24"
-                                    value={formData.cidr || ""}
-                                    onChange={(e) => setFormData({ ...formData, cidr: e.target.value })}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="vlan" className="text-sm font-medium">VLAN ID</Label>
-                                    <Input
-                                        id="vlan"
-                                        type="number"
-                                        placeholder="10"
-                                        value={formData.vlan_id?.toString() || ""}
-                                        onChange={(e) => setFormData({ ...formData, vlan_id: parseInt(e.target.value) || undefined })}
-                                        className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="gateway" className="text-sm font-medium">Gateway</Label>
-                                    <Input
-                                        id="gateway"
-                                        placeholder="192.168.1.1"
-                                        value={formData.gateway || ""}
-                                        onChange={(e) => setFormData({ ...formData, gateway: e.target.value })}
-                                        className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="desc" className="text-sm font-medium">Description</Label>
-                                <Input
-                                    id="desc"
-                                    placeholder="Main trusted network"
-                                    value={formData.description || ""}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="hover:bg-secondary/60">Cancel</Button>
-                            <Button onClick={handleSave}>Save</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <NetworkDialog
+                    open={isDialogOpen}
+                    onOpenChange={setIsDialogOpen}
+                    onSaved={handleSaved}
+                    initialData={selectedNetwork}
+                />
             </div>
         </AppLayout>
     );

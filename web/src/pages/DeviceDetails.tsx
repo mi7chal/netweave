@@ -10,13 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 import { Server, Monitor, Laptop, Router, Network, Wifi, Container, Plus, Trash2, Cpu, HardDrive, MemoryStick, Edit2 } from "lucide-react";
 import {
     Table,
@@ -26,9 +20,10 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+
+import { InterfaceDialog } from "@/components/InterfaceDialog";
+import { AssignStaticIpDialog } from "@/components/AssignStaticIpDialog";
+import { EditDeviceDialog } from "@/components/EditDeviceDialog";
 
 export const DeviceDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -46,26 +41,31 @@ export const DeviceDetailsPage = () => {
     );
 
     const [isInterfaceDialogOpen, setIsInterfaceDialogOpen] = useState(false);
-    const [interfaceName, setInterfaceName] = useState("");
-    const [interfaceMac, setInterfaceMac] = useState("");
+
+    const [isEditInterfaceDialogOpen, setIsEditInterfaceDialogOpen] = useState(false);
+    const [selectedInterfaceId, setSelectedInterfaceId] = useState<string | null>(null);
+    const [editInterfaceName, setEditInterfaceName] = useState("");
+    const [editInterfaceMac, setEditInterfaceMac] = useState("");
+
+    const [isMakeStaticDialogOpen, setIsMakeStaticDialogOpen] = useState(false);
+    const [makeStaticIpData, setMakeStaticIpData] = useState<{ id: string, ip: string, mac: string | null, networkId: string } | null>(null);
+    const [customStaticIp, setCustomStaticIp] = useState("");
 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editFormData, setEditFormData] = useState<Partial<CreateDevicePayload>>({});
 
-    const handleAddInterface = async () => {
+    const handleAddInterface = async (name: string, mac: string) => {
         try {
             await fetchApi(`/api/devices/${id}/interfaces`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: interfaceName,
-                    mac_address: interfaceMac || null,
+                    name: name,
+                    mac_address: mac || null,
                     interface_type: 'ethernet'
                 })
             });
             toast.success("Interface added");
-            setInterfaceName("");
-            setInterfaceMac("");
             setIsInterfaceDialogOpen(false);
             mutate();
         } catch (error) {
@@ -74,6 +74,89 @@ export const DeviceDetailsPage = () => {
         }
     };
 
+    const handleEditInterface = async (name: string, mac: string) => {
+        if (!selectedInterfaceId) return;
+        try {
+            await fetchApi(`/api/devices/${id}/interfaces/${selectedInterfaceId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    mac_address: mac || null,
+                    interface_type: 'ethernet'
+                })
+            });
+            toast.success("Interface updated");
+            setIsEditInterfaceDialogOpen(false);
+            mutate();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update interface");
+        }
+    };
+
+    const openEditInterface = (iface: DeviceDetails['interfaces'][0]) => {
+        setSelectedInterfaceId(iface.id);
+        setEditInterfaceName(iface.name);
+        setEditInterfaceMac(iface.mac_address || "");
+        setIsEditInterfaceDialogOpen(true);
+    };
+
+    const openMakeStaticDialog = (ipId: string, currentIp: string, currentMac: string | null, networkId: string | undefined) => {
+        if (!networkId) {
+            toast.error("Cannot make static: missing network ID on IP.");
+            return;
+        }
+        setMakeStaticIpData({ id: ipId, ip: currentIp, mac: currentMac, networkId });
+        setCustomStaticIp(currentIp); // Default to current IP
+        setIsMakeStaticDialogOpen(true);
+    };
+
+    const handleConfirmMakeStatic = async (targetIp: string) => {
+        if (!makeStaticIpData) return;
+        const { id: ipId, mac: currentMac } = makeStaticIpData;
+
+        try {
+            // Update the IP assignment to static
+            await fetchApi(`/api/devices/${id}/ips/${ipId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ip_address: targetIp,
+                    mac_address: currentMac,
+                    is_static: "true",
+                    status: 'ACTIVE'
+                })
+            });
+
+            toast.success(`IP ${targetIp} is now statically assigned`);
+            setIsMakeStaticDialogOpen(false);
+            setMakeStaticIpData(null);
+            mutate();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to make IP static");
+        }
+    };
+
+    const handleReleaseStatic = async (ipId: string) => {
+        try {
+            await fetchApi(`/api/devices/${id}/ips/${ipId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    is_static: "false",
+                    status: 'ACTIVE'
+                })
+            });
+
+            toast.success("Static IP released and is now back to dynamic");
+            mutate();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to release static IP");
+        }
+    };
     const handleDeleteInterface = async (interfaceId: string) => {
         if (!confirm("Are you sure you want to delete this interface?")) return;
         try {
@@ -100,12 +183,12 @@ export const DeviceDetailsPage = () => {
         }
     };
 
-    const handleSaveDevice = async () => {
+    const handleSaveDevice = async (data: Partial<CreateDevicePayload>) => {
         try {
             await fetchApi(`/api/devices/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editFormData)
+                body: JSON.stringify(data)
             });
             setIsEditDialogOpen(false);
             toast.success("Device updated");
@@ -120,12 +203,11 @@ export const DeviceDetailsPage = () => {
         if (!device) return;
         setEditFormData({
             hostname: device.hostname,
-            device_type: device.device_type,
+            device_type: device.device_type || DeviceType.Other,
             os_info: device.os_info || "",
             cpu_cores: device.cpu_cores || undefined,
             ram_gb: device.ram_gb || undefined,
             storage_gb: device.storage_gb || undefined,
-            // mac_address is only really editable easily on the main list or via interface tab, but keep it null for payload unless they want to edit eth0
         });
         setIsEditDialogOpen(true);
     };
@@ -253,61 +335,87 @@ export const DeviceDetailsPage = () => {
                                                                 {iface.mac_address || "No MAC"}
                                                             </Badge>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                            onClick={() => handleDeleteInterface(iface.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                                onClick={() => openEditInterface(iface)}
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                                onClick={() => handleDeleteInterface(iface.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="py-3">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow className="hover:bg-transparent">
-                                                                <TableHead className="h-8">IP Address</TableHead>
-                                                                <TableHead className="h-8">State</TableHead>
-                                                                <TableHead className="h-8">Type</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {iface.ips.length === 0 ? (
+                                                    <div className="space-y-4">
+                                                        <Table>
+                                                            <TableHeader>
                                                                 <TableRow className="hover:bg-transparent">
-                                                                    <TableCell colSpan={3} className="text-muted-foreground text-sm h-8 py-2">
-                                                                        No IPs assigned.
-                                                                    </TableCell>
+                                                                    <TableHead className="h-8">IP Address</TableHead>
+                                                                    <TableHead className="h-8">Type</TableHead>
+                                                                    <TableHead className="h-8">State</TableHead>
+                                                                    <TableHead className="h-8 text-right">Actions</TableHead>
                                                                 </TableRow>
-                                                            ) : (
-                                                                iface.ips.map((ip) => (
-                                                                    <TableRow key={ip.id} className="hover:bg-transparent">
-                                                                        <TableCell className="py-2.5 font-mono text-sm">{ip.ip_address}</TableCell>
-                                                                        <TableCell className="py-2.5">
-                                                                            <Badge variant="outline" className={cn(
-                                                                                "text-[11px] h-5 shadow-sm uppercase font-semibold tracking-wider",
-                                                                                ip.status === 'ACTIVE' && ip.is_static ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-                                                                                    ip.status === 'ACTIVE' ? "bg-green-500/10 text-green-600 border-green-500/20" :
-                                                                                        ip.status === 'RESERVED' ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
-                                                                                            "bg-secondary/50 text-muted-foreground border-border/50"
-                                                                            )}>
-                                                                                {ip.status === 'ACTIVE' && ip.is_static ? 'STATIC' :
-                                                                                    ip.status === 'RESERVED' ? 'DHCP RSV' :
-                                                                                        ip.status === 'ACTIVE' ? 'DHCP DYN' : ip.status}
-                                                                            </Badge>
-                                                                        </TableCell>
-                                                                        <TableCell className="py-2.5 text-xs text-muted-foreground flex items-center gap-1.5">
-                                                                            <div className={cn(
-                                                                                "w-1.5 h-1.5 rounded-full",
-                                                                                ip.is_static ? "bg-amber-500" : "bg-blue-500"
-                                                                            )} />
-                                                                            {ip.is_static ? "Device Defined" : "Router Authored"}
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {iface.ips.length === 0 ? (
+                                                                    <TableRow className="hover:bg-transparent">
+                                                                        <TableCell colSpan={4} className="text-muted-foreground text-xs h-8 py-2 text-center">
+                                                                            No IP addresses assigned.
                                                                         </TableCell>
                                                                     </TableRow>
-                                                                ))
-                                                            )}
-                                                        </TableBody>
-                                                    </Table>
+                                                                ) : (
+                                                                    iface.ips.map((ip) => (
+                                                                        <TableRow key={ip.id} className="hover:bg-transparent">
+                                                                            <TableCell className="py-2.5 font-mono text-sm">{ip.ip_address}</TableCell>
+                                                                            <TableCell className="py-2.5">
+                                                                                {ip.is_static ? (
+                                                                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] h-5 shadow-sm uppercase font-semibold tracking-wider">
+                                                                                        STATIC
+                                                                                    </Badge>
+                                                                                ) : (
+                                                                                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-[10px] h-5 shadow-sm uppercase font-semibold tracking-wider">
+                                                                                        DYNAMIC
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </TableCell>
+                                                                            <TableCell className="py-2.5">
+                                                                                <Badge variant="outline" className={cn(
+                                                                                    "text-[10px] h-5 shadow-sm uppercase font-semibold tracking-wider",
+                                                                                    ip.status === 'ACTIVE' && ip.is_static ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                                                                                        ip.status === 'ACTIVE' && !ip.is_static ? "bg-green-500/10 text-green-600 border-green-500/20" :
+                                                                                            ip.status === 'RESERVED' ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
+                                                                                                "bg-secondary/50 text-muted-foreground border-border/50"
+                                                                                )}>
+                                                                                    {ip.status === 'RESERVED' ? 'DHCP RSV' : ip.status === 'ACTIVE' ? (ip.is_static ? 'ACTIVE' : 'DHCP DYN') : ip.status}
+                                                                                </Badge>
+                                                                            </TableCell>
+                                                                            <TableCell className="py-2.5 text-right flex justify-end gap-2">
+                                                                                {ip.is_static ? (
+                                                                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleReleaseStatic(ip.id)}>
+                                                                                        Make Dynamic
+                                                                                    </Button>
+                                                                                ) : (
+                                                                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openMakeStaticDialog(ip.id, ip.ip_address, iface.mac_address, ip.network_id)}>
+                                                                                        Make Static
+                                                                                    </Button>
+                                                                                )}
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    ))
+                                                                )}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
                                                 </CardContent>
                                             </Card>
                                         ))
@@ -387,105 +495,36 @@ export const DeviceDetailsPage = () => {
                     </div>
                 </div>
 
-                <Dialog open={isInterfaceDialogOpen} onOpenChange={setIsInterfaceDialogOpen}>
-                    {/* ... (existing interface dialog) ... */}
-                    <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Add Interface</DialogTitle>
-                            <DialogDescription className="text-muted-foreground/80">
-                                Add a new network interface to this device.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-6">
-                            <div className="grid gap-2">
-                                <Label className="text-sm font-medium">Interface Name</Label>
-                                <Input
-                                    placeholder="eth1"
-                                    value={interfaceName}
-                                    onChange={(e) => setInterfaceName(e.target.value)}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label className="text-sm font-medium">MAC Address</Label>
-                                <Input
-                                    placeholder="00:00:00:00:00:00"
-                                    value={interfaceMac}
-                                    onChange={(e) => setInterfaceMac(e.target.value)}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button variant="outline" onClick={() => setIsInterfaceDialogOpen(false)} className="hover:bg-secondary/60">Cancel</Button>
-                            <Button onClick={handleAddInterface}>Add Interface</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <InterfaceDialog
+                    open={isInterfaceDialogOpen}
+                    onOpenChange={setIsInterfaceDialogOpen}
+                    onSubmit={handleAddInterface}
+                    mode="add"
+                />
 
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Edit Device</DialogTitle>
-                            <DialogDescription className="text-muted-foreground/80">
-                                Update device configuration.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-6 max-h-[60vh] overflow-y-auto scrollbar-hide px-1">
-                            <div className="grid gap-2">
-                                <Label htmlFor="hostname" className="text-sm font-medium">Hostname</Label>
-                                <Input
-                                    id="hostname"
-                                    placeholder="server-01"
-                                    value={editFormData.hostname || ""}
-                                    onChange={(e) => setEditFormData({ ...editFormData, hostname: e.target.value })}
-                                    className="bg-secondary/40 border-border/40"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="os" className="text-sm font-medium">Operating System</Label>
-                                <Input
-                                    id="os"
-                                    placeholder="Ubuntu 24.04"
-                                    value={editFormData.os_info || ""}
-                                    onChange={(e) => setEditFormData({ ...editFormData, os_info: e.target.value })}
-                                    className="bg-secondary/40 border-border/40"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label className="text-sm font-medium">Device Type</Label>
-                                <Select value={editFormData.device_type} onValueChange={(v) => setEditFormData({ ...editFormData, device_type: v as DeviceType })}>
-                                    <SelectTrigger className="bg-secondary/40 border-border/40">
-                                        <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.values(DeviceType).map(t => (
-                                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="cpu" className="text-xs font-medium">CPU Cores</Label>
-                                    <Input id="cpu" type="number" value={editFormData.cpu_cores?.toString() || ""} onChange={(e) => setEditFormData({ ...editFormData, cpu_cores: parseInt(e.target.value) || undefined })} className="bg-secondary/40 border-border/40 h-8 text-sm" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="ram" className="text-xs font-medium">RAM (GB)</Label>
-                                    <Input id="ram" type="number" step="0.5" value={editFormData.ram_gb?.toString() || ""} onChange={(e) => setEditFormData({ ...editFormData, ram_gb: parseFloat(e.target.value) || undefined })} className="bg-secondary/40 border-border/40 h-8 text-sm" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="storage" className="text-xs font-medium">Storage (GB)</Label>
-                                    <Input id="storage" type="number" step="1" value={editFormData.storage_gb?.toString() || ""} onChange={(e) => setEditFormData({ ...editFormData, storage_gb: parseFloat(e.target.value) || undefined })} className="bg-secondary/40 border-border/40 h-8 text-sm" />
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="hover:bg-secondary/60">Cancel</Button>
-                            <Button onClick={handleSaveDevice}>Save Changes</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <InterfaceDialog
+                    open={isEditInterfaceDialogOpen}
+                    onOpenChange={setIsEditInterfaceDialogOpen}
+                    onSubmit={handleEditInterface}
+                    initialName={editInterfaceName}
+                    initialMac={editInterfaceMac}
+                    mode="edit"
+                />
+
+                <AssignStaticIpDialog
+                    open={isMakeStaticDialogOpen}
+                    onOpenChange={setIsMakeStaticDialogOpen}
+                    onSubmit={handleConfirmMakeStatic}
+                    defaultIp={customStaticIp}
+                    macLabel={makeStaticIpData?.mac || undefined}
+                />
+
+                <EditDeviceDialog
+                    open={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                    onSubmit={handleSaveDevice}
+                    initialData={editFormData}
+                />
             </div>
         </AppLayout>
     );

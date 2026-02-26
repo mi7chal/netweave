@@ -2,7 +2,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use homelab_manager::create_app;
+use netweave::create_app;
 
 /// Entry point
 #[tokio::main]
@@ -33,7 +33,7 @@ async fn main() {
     // OIDC Service
     // OIDC Service
     tracing::debug!("Initializing OIDC Service...");
-    let oidc = match homelab_manager::auth::oidc::OidcService::from_env().await {
+    let oidc = match netweave::auth::oidc::OidcService::from_env().await {
         Ok(service) => {
             tracing::info!("OIDC Service initialized.");
             Some(service)
@@ -45,13 +45,13 @@ async fn main() {
     };
 
     // Create state
-    let state = homelab_manager::create_state(pool, oidc).await;
+    let state = netweave::create_state(pool, oidc).await;
 
     // Start monitoring background task
-    tokio::spawn(homelab_manager::monitoring::start_monitoring(state.clone()));
+    tokio::spawn(netweave::monitoring::start_monitoring(state.clone()));
     
     // Start integration sync background task
-    tokio::spawn(homelab_manager::integrations::run_sync_task(state.clone()));
+    tokio::spawn(netweave::integrations::run_sync_task(state.clone()));
 
     // build app
     let app = create_app(state);

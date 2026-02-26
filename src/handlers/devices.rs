@@ -52,12 +52,7 @@ pub async fn get_device(
         .get_device_details(id)
         .await
         .map_err(internal_error)?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            Json(super::common::ErrorResponse {
-                error: "Device not found".into(),
-            }),
-        ))?;
+        .ok_or_else(|| crate::handlers::common::AppError::NotFound("Device not found".into()))?;
 
     json_response(device)
 }
@@ -94,6 +89,20 @@ pub async fn create_interface(
     let iface = state
         .db
         .create_interface(device_id, payload)
+        .await
+        .map_err(internal_error)?;
+
+    json_response(iface)
+}
+
+pub async fn update_interface(
+    State(state): State<AppState>,
+    Path((_device_id, interface_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<CreateInterfacePayload>,
+) -> AppResult<impl IntoResponse> {
+    let iface = state
+        .db
+        .update_interface(interface_id, payload)
         .await
         .map_err(internal_error)?;
 

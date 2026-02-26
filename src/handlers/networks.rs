@@ -1,7 +1,7 @@
-use crate::db::{CreateIpParams, CreateNetworkParams};
-use crate::handlers::common::{internal_error, json_response, AppResult, ErrorResponse};
+use crate::handlers::common::{internal_error, json_response, AppResult};
 use crate::models::{CreateNetworkIpPayload, CreateNetworkPayload, IpStatus, UpdateNetworkPayload};
 use crate::AppState;
+use crate::db::{CreateIpParams, CreateNetworkParams};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -25,12 +25,7 @@ pub async fn create_network(
 ) -> AppResult<impl IntoResponse> {
     // Basic validation
     let cidr = IpNetwork::from_str(&payload.cidr).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("Invalid CIDR: {}", e),
-            }),
-        )
+        crate::handlers::common::AppError::BadRequest(format!("Invalid CIDR: {}", e).into())
     })?;
 
     let gateway = payload
@@ -72,12 +67,7 @@ pub async fn get_network(
         .get_network(id)
         .await
         .map_err(internal_error)?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: "Network not found".into(),
-            }),
-        ))?;
+        .ok_or(crate::handlers::common::AppError::NotFound("Network not found".into()))?;
 
     json_response(network)
 }
@@ -89,12 +79,7 @@ pub async fn update_network(
     Json(payload): Json<UpdateNetworkPayload>,
 ) -> AppResult<impl IntoResponse> {
     let cidr = IpNetwork::from_str(&payload.cidr).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("Invalid CIDR: {}", e),
-            }),
-        )
+        crate::handlers::common::AppError::BadRequest(format!("Invalid CIDR: {}", e).into())
     })?;
 
     let params = CreateNetworkParams {
@@ -148,12 +133,7 @@ pub async fn create_network_ip(
     Json(payload): Json<CreateNetworkIpPayload>,
 ) -> AppResult<impl IntoResponse> {
     let ip_address = std::net::IpAddr::from_str(&payload.ip_address).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: "Invalid IP address".into(),
-            }),
-        )
+        crate::handlers::common::AppError::BadRequest("Invalid IP address".into())
     })?;
 
     let mac_address = payload

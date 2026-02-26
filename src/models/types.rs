@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use sea_orm::entity::prelude::*;
-use sea_orm::{TryGetable, TryGetError, Value, QueryResult, DbErr, RuntimeErr};
+use sea_orm::{TryGetError, Value, DbErr};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,8 +20,8 @@ impl From<MacAddress> for Value {
 }
 
 impl sea_orm::TryGetable for MacAddress {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let s = String::try_get_by(res, idx)?;
+    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> Result<Self, TryGetError> {
+        let s = <String as sea_orm::TryGetable>::try_get_by(res, idx)?;
         let val = mac_address::MacAddress::from_str(&s).map_err(|_| {
             TryGetError::DbErr(DbErr::Type(format!("Failed to parse MacAddress from string: {}", s)))
         })?;

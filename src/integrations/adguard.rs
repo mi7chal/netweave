@@ -1,5 +1,5 @@
-use crate::integrations::{IntegrationProvider, IntegrationType};
-use crate::models::{CreateServicePayload, CreateDevicePayload};
+use crate::integrations::{IntegrationProvider, IntegrationType, IntegrationDhcpLease};
+use crate::models::CreateServicePayload;
 use crate::utils::encryption;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -119,7 +119,7 @@ impl IntegrationProvider for AdGuardIntegration {
         Ok(Vec::new())
     }
 
-    async fn fetch_devices(&self) -> Result<Vec<CreateDevicePayload>> {
+    async fn fetch_devices(&self) -> Result<Vec<IntegrationDhcpLease>> {
         self.ensure_authenticated().await?;
         let url = format!("{}/control/dhcp/status", self.url);
         let res = self.client.get(&url).send().await?;
@@ -145,17 +145,11 @@ impl IntegrationProvider for AdGuardIntegration {
         if let Some(leases) = json.get("leases").and_then(|l| l.as_array()) {
             for lease_val in leases {
                 if let Ok(lease) = serde_json::from_value::<Lease>(lease_val.clone()) {
-                     devices.push(CreateDevicePayload {
+                     devices.push(IntegrationDhcpLease {
                          hostname: lease.hostname.clone(),
-                         device_type: "Unknown".to_string(),
-                         parent_device_id: None,
-                         mac_address: Some(lease.mac.clone()),
-                         ip_address: Some(lease.ip.clone()),
-                         owner: None,
-                         os_info: None,
-                         cpu_cores: None,
-                         ram_gb: None,
-                         storage_gb: None,
+                         mac_address: lease.mac.clone(),
+                         ip_address: lease.ip.clone(),
+                         is_static: false,
                      });
                 }
             }
@@ -165,22 +159,80 @@ impl IntegrationProvider for AdGuardIntegration {
         if let Some(static_leases) = json.get("static_leases").and_then(|l| l.as_array()) {
              for lease_val in static_leases {
                 if let Ok(lease) = serde_json::from_value::<Lease>(lease_val.clone()) {
-                     devices.push(CreateDevicePayload {
+                     devices.push(IntegrationDhcpLease {
                          hostname: lease.hostname.clone(),
-                         device_type: "Unknown".to_string(),
-                         parent_device_id: None,
-                         mac_address: Some(lease.mac.clone()),
-                         ip_address: Some(lease.ip.clone()),
-                         owner: None,
-                         os_info: None,
-                         cpu_cores: None,
-                         ram_gb: None,
-                         storage_gb: None,
+                         mac_address: lease.mac.clone(),
+                         ip_address: lease.ip.clone(),
+                         is_static: true,
                      });
                 }
              }
         }
 
         Ok(devices)
+    }
+
+    async fn push_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()> {
+        self.ensure_authenticated().await?;
+        
+        let url = format!("{}/control/dhcp/add_static_lease", self.url);
+        
+        let payload = serde_json::json!({
+            "mac": mac,
+            "ip": ip,
+            "hostname": hostname
+        });
+
+        let res = self.client.post(&url)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res.text().await.unwrap_or_default();
+            tracing::error!("AdGuard push_static_lease Failed: Status={}, Body={}", status, body);
+            // Ignore 400 Bad Request if it already exists (usually body contains "already exists")
+            if status == 400 && body.contains("already exists") {
+                tracing::info!("Static lease already exists in AdGuard: {} - {}", mac, ip);
+                return Ok(());
+            }
+            return Err(anyhow::anyhow!("AdGuard push_static_lease Failed: {} - {}", status, body));
+        }
+
+        tracing::info!("Successfully pushed static lease to AdGuard: {} -> {}", mac, ip);
+        Ok(())
+    }
+
+    async fn delete_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()> {
+        self.ensure_authenticated().await?;
+        
+        let url = format!("{}/control/dhcp/remove_static_lease", self.url);
+        
+        let payload = serde_json::json!({
+            "mac": mac,
+            "ip": ip,
+            "hostname": hostname
+        });
+
+        let res = self.client.post(&url)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res.text().await.unwrap_or_default();
+            tracing::error!("AdGuard delete_static_lease Failed: Status={}, Body={}", status, body);
+            // Ignore 400 Bad Request if it does not exist
+            if status == 400 {
+                tracing::info!("Static lease might not exist in AdGuard to delete: {} - {}", mac, ip);
+                return Ok(());
+            }
+            return Err(anyhow::anyhow!("AdGuard delete_static_lease Failed: {} - {}", status, body));
+        }
+
+        tracing::info!("Successfully deleted static lease from AdGuard: {} -> {}", mac, ip);
+        Ok(())
     }
 }

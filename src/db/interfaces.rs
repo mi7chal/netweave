@@ -4,6 +4,7 @@ use crate::models::{CreateInterfacePayload, Interface};
 use sea_orm::*;
 use uuid::Uuid;
 use chrono::Utc;
+use std::str::FromStr;
 impl Db {
     pub async fn create_interface(
         &self,
@@ -67,5 +68,42 @@ impl Db {
                 interface_type: i.r#type,
             })
             .collect())
+    }
+    pub async fn update_interface(
+        &self,
+        id: Uuid,
+        params: CreateInterfacePayload,
+    ) -> Result<Interface, anyhow::Error> {
+        let mac = params.mac_address;
+
+        let sql = r#"
+            UPDATE interfaces 
+            SET name = $1, mac_address = $2::macaddr
+            WHERE id = $3
+            RETURNING id, device_id, name, mac_address::text, type as interface_type, created_at
+        "#;
+
+        let stmt = Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            sql,
+            vec![
+                params.name.into(),
+                mac.map(|m| m.to_string()).into(),
+                id.into(),
+            ],
+        );
+
+        let i = self.conn.query_one(stmt).await?.ok_or_else(|| anyhow::anyhow!("Interface not found"))?;
+
+        let mac_str: Option<String> = i.try_get("", "mac_address")?;
+        let parsed_mac = mac_str.and_then(|s| mac_address::MacAddress::from_str(&s).ok());
+
+        Ok(Interface {
+            id: i.try_get("", "id")?,
+            device_id: i.try_get("", "device_id")?,
+            name: i.try_get("", "name")?,
+            mac_address: parsed_mac,
+            interface_type: i.try_get("", "interface_type")?,
+        })
     }
 }
