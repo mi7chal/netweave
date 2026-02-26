@@ -32,7 +32,7 @@ export function AppSidebar() {
                         <div className="absolute inset-0 bg-primary/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <Server className="h-5 w-5 text-primary relative z-10" />
                     </div>
-                    <span className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 group-hover:to-primary/80 transition-all duration-300">Homelab</span>
+                    <span className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70 group-hover:to-primary/80 transition-all duration-300">NetWeave</span>
                 </Link>
             </SidebarHeader>
             <SidebarContent>

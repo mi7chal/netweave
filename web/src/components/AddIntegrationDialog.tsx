@@ -16,12 +16,14 @@ import { FormSelectField } from "./forms/FormSelectField";
 import { useState } from "react";
 import { fetchApi } from "@/lib/api-client";
 import { toast } from "sonner";
+import { Info, Key, User, Globe } from "lucide-react";
 
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     providerType: z.string().min(1, "Type is required"),
     baseUrl: z.string().url("Must be a valid URL").min(1, "URL is required"),
-    apiKey: z.string().min(1, "API Key is required"),
+    username: z.string().min(1, "Username is required"),
+    password: z.string().min(1, "Password/API Key is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,9 +41,10 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
-            providerType: "ADGUARD",
+            providerType: "AdGuardHome",
             baseUrl: "",
-            apiKey: "",
+            username: "",
+            password: "",
         },
     });
 
@@ -52,8 +55,9 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
                 name: values.name,
                 provider_type: values.providerType,
                 config: {
-                    base_url: values.baseUrl,
-                    api_key: values.apiKey
+                    url: values.baseUrl,
+                    username: values.username,
+                    password: values.password
                 }
             };
 
@@ -69,7 +73,6 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
             onOpenChange(false);
         } catch (e) {
             console.error(e);
-            // Error is handled by fetchApi globally, but we can catch it
         } finally {
             setLoading(false);
         }
@@ -80,15 +83,15 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
             if (!open) form.reset();
             onOpenChange(open);
         }}>
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[450px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Add Integration</DialogTitle>
                     <DialogDescription className="text-muted-foreground/80">
-                        Connect external services to import data.
+                        Connect external services to synchronize your network data.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-6">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-5 py-6">
                         <FormInputField
                             control={form.control}
                             name="name"
@@ -98,30 +101,61 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
                         <FormSelectField
                             control={form.control}
                             name="providerType"
-                            label="Type"
-                            placeholder="Select type"
+                            label="Provider Type"
+                            placeholder="Select provider"
                             options={[
-                                { label: "AdGuard Home", value: "ADGUARD" },
-                                { label: "Unifi Controller", value: "UNIFI" },
-                                { label: "Kea DHCP", value: "KEA" },
+                                { label: "AdGuard Home", value: "AdGuardHome" },
+                                { label: "Unifi Controller (Soon)", value: "UNIFI", disabled: true },
+                                { label: "Kea DHCP (Soon)", value: "KEA", disabled: true },
                             ]}
                         />
+
+                        {form.watch("providerType") === "AdGuardHome" && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-2">
+                                <div className="flex items-start gap-3">
+                                    <Info className="h-5 w-5 text-primary mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold text-primary">Self-Hosted AdGuard Home</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            Use the same <strong>Username</strong> and <strong>Password</strong> you use to access the AdGuard Home web dashboard.
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground/70 italic mt-1">
+                                            Note: Include the port if your dashboard isn't on 80/443 (e.g., http://192.168.1.5:3000).
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <FormInputField
                             control={form.control}
                             name="baseUrl"
-                            label="URL"
+                            label="Dashboard URL"
                             placeholder="http://192.168.1.5"
+                            icon={Globe}
                         />
-                        <FormInputField
-                            control={form.control}
-                            name="apiKey"
-                            label="API Key"
-                            type="password"
-                            placeholder="Secret..."
-                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormInputField
+                                control={form.control}
+                                name="username"
+                                label="Username"
+                                placeholder="admin"
+                                icon={User}
+                            />
+                            <FormInputField
+                                control={form.control}
+                                name="password"
+                                label="Password"
+                                type="password"
+                                placeholder="••••••••"
+                                icon={Key}
+                            />
+                        </div>
+
                         <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button type="submit" disabled={loading}>
-                                {loading ? "Adding..." : "Add Integration"}
+                            <Button type="submit" disabled={loading} className="w-full sm:w-auto px-8">
+                                {loading ? "Connecting..." : "Add Integration"}
                             </Button>
                         </DialogFooter>
                     </form>

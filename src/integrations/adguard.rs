@@ -1,4 +1,4 @@
-use crate::integrations::{IntegrationProvider, IntegrationType, IntegrationDhcpLease};
+use crate::integrations::{IntegrationProvider, IntegrationType, IntegrationDhcpLease, IntegrationNetwork};
 use crate::models::CreateServicePayload;
 use crate::utils::encryption;
 use anyhow::{Context, Result};
@@ -14,19 +14,6 @@ pub struct AdGuardIntegration {
     client: Client,
 }
 
-#[derive(Deserialize)]
-struct AdGuardStatus {
-    version: String,
-}
-
-
-
-#[derive(Deserialize)]
-struct DhcpLease {
-    mac: String,
-    ip: String,
-    hostname: String,
-}
 
 impl AdGuardIntegration {
     pub fn new(config: &Value) -> Result<Self> {
@@ -117,6 +104,63 @@ impl IntegrationProvider for AdGuardIntegration {
     async fn fetch_services(&self) -> Result<Vec<CreateServicePayload>> {
         // DNS fetching removed as per user request
         Ok(Vec::new())
+    }
+
+    async fn fetch_networks(&self) -> Result<Vec<IntegrationNetwork>> {
+        self.ensure_authenticated().await?;
+        let url = format!("{}/control/dhcp/status", self.url);
+        let res = self.client.get(&url).send().await?;
+        
+        if !res.status().is_success() {
+            return Err(anyhow::anyhow!("AdGuard fetch_networks failed: {}", res.status()));
+        }
+
+        let json: Value = res.json().await?;
+        tracing::info!("AdGuard DHCP status response keys: {:?}", json.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+        
+        let mut networks = Vec::new();
+        
+        // Try to find gateway and mask in multiple possible nested objects (v4, conf, or top-level)
+        let (gateway, mask) = if let Some(v4) = json.get("v4") {
+            (
+                v4.get("gateway_ip").and_then(|v| v.as_str()),
+                v4.get("subnet_mask").and_then(|v| v.as_str())
+            )
+        } else if let Some(conf) = json.get("conf") {
+            (
+                conf.get("gateway_ip").and_then(|v| v.as_str()),
+                conf.get("subnet_mask").and_then(|v| v.as_str())
+            )
+        } else {
+            (
+                json.get("gateway_ip").and_then(|v| v.as_str()),
+                json.get("subnet_mask").and_then(|v| v.as_str())
+            )
+        };
+
+        tracing::info!("AdGuard discovered stats: gateway={:?}, mask={:?}", gateway, mask);
+
+        if let (Some(gateway), Some(mask)) = (gateway, mask) {
+            if !gateway.is_empty() && !mask.is_empty() {
+                // Calculate CIDR from gateway and mask
+                if let (Ok(gw_ip), Ok(m_ip)) = (gateway.parse::<std::net::Ipv4Addr>(), mask.parse::<std::net::Ipv4Addr>()) {
+                    let prefix = u32::from(m_ip).count_ones() as u8;
+                    let network_addr = std::net::Ipv4Addr::from(u32::from(gw_ip) & u32::from(m_ip));
+                    let cidr = format!("{}/{}", network_addr, prefix);
+                    
+                    tracing::info!("Discovered network from AdGuard: {} with CIDR {}", gateway, cidr);
+
+                    networks.push(IntegrationNetwork {
+                        name: format!("AdGuard Network {}", network_addr),
+                        cidr,
+                        gateway: Some(gateway.to_string()),
+                        vlan_id: None,
+                    });
+                }
+            }
+        }
+        
+        Ok(networks)
     }
 
     async fn fetch_devices(&self) -> Result<Vec<IntegrationDhcpLease>> {

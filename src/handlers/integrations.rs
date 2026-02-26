@@ -70,6 +70,32 @@ pub async fn create_integration(
     };
 
     let saved = new_integration.insert(&state.conn).await.map_err(internal_error)?;
+
+    let integration = saved.clone();
+    let state_clone = state.clone();
+
+    tokio::spawn(async move {
+        let mut active: integrations::ActiveModel = integration.clone().into();
+        active.status = Set(Some("SYNCING".to_string()));
+        let _ = active.update(&state_clone.conn).await;
+
+        match crate::integrations::process_integration(&state_clone, &integration).await {
+            Ok(_) => {
+                let mut active: integrations::ActiveModel = integration.into();
+                active.status = Set(Some("ACTIVE".to_string()));
+                active.last_sync_at = Set(Some(chrono::Utc::now().into()));
+                let _ = active.update(&state_clone.conn).await;
+            }
+            Err(e) => {
+                tracing::error!("Auto sync failed: {}", e);
+                let mut active: integrations::ActiveModel = integration.into();
+                let err_msg = format!("ERROR: {}", e);
+                active.status = Set(Some(err_msg.chars().take(250).collect()));
+                let _ = active.update(&state_clone.conn).await;
+            }
+        }
+    });
+
     json_response(saved)
 }
 

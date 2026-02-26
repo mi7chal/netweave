@@ -1,16 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table";
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { GlassCard } from "@/components/ui/glass-card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingState } from "@/components/LoadingState";
 import { Plus, Trash2, Edit2, Network as NetworkIcon } from "lucide-react";
 import { useState, useMemo } from "react";
 import useSWR from "swr";
@@ -19,15 +15,15 @@ import { toast } from "sonner";
 import { AppLayout } from "../layouts/AppLayout";
 import { SearchInput } from "@/components/SearchInput";
 import { PageHeader } from "@/components/PageHeader";
-
 import { NetworkDialog, type Network } from "@/components/NetworkDialog";
 
 export const Networks = () => {
-    const { data: networks = [], isLoading, mutate } = useSWR<Network[]>('/api/networks', fetchApi);
+    const { data: networks = [], error, isLoading, mutate } = useSWR<Network[]>("/api/networks", fetchApi);
 
     const [search, setSearch] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
     const filteredNetworks = useMemo(() => {
         if (!search.trim()) return networks;
@@ -40,9 +36,9 @@ export const Networks = () => {
     }, [networks, search]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete the network "${name}"? This will also remove associated IP assignments.`)) return;
         try {
-            await fetchApi(`/api/networks/${id}`, { method: 'DELETE' });
+            await fetchApi(`/api/networks/${id}`, { method: "DELETE" });
+            setDeleteConfirm(null);
             mutate();
             toast.success("Network deleted", { description: `${name} has been removed successfully.` });
         } catch (e) {
@@ -51,52 +47,21 @@ export const Networks = () => {
         }
     };
 
-    const handleSaved = () => {
-        mutate();
-        setIsDialogOpen(false);
-    };
-
-    const openEdit = (network: Network) => {
-        setSelectedNetwork(network);
-        setIsDialogOpen(true);
-    };
-
-    const openCreate = () => {
-        setSelectedNetwork(null);
-        setIsDialogOpen(true);
-    };
-
     return (
         <AppLayout>
             <div className="flex flex-col space-y-6">
-                <PageHeader
-                    title="Networks"
-                    description="Manage IP blocks, VLANs and Subnets."
-                >
-                    <SearchInput
-                        value={search}
-                        onChange={setSearch}
-                        placeholder="Search networks..."
-                        className="w-full md:w-64"
-                    />
-                    <Button onClick={openCreate} className="gap-2 shadow-sm rounded-full h-10 px-5 flex-shrink-0 hover:scale-105 transition-all duration-300">
+                <PageHeader title="Networks" description="Manage IP blocks, VLANs and Subnets.">
+                    <SearchInput value={search} onChange={setSearch} placeholder="Search networks..." className="w-full md:w-64" />
+                    <Button onClick={() => { setSelectedNetwork(null); setIsDialogOpen(true); }} className="gap-2 shadow-sm rounded-full h-10 px-5 flex-shrink-0 hover:scale-105 transition-all duration-300">
                         <Plus className="h-4 w-4" /> Add Network
                     </Button>
                 </PageHeader>
 
-                {isLoading ? (
-                    <div className="text-center py-10 text-muted-foreground animate-pulse font-medium">Loading...</div>
-                ) : networks.length === 0 ? (
-                    <div className="text-center py-20 bg-white/40 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-3xl mt-6 shadow-sm">
-                        <NetworkIcon className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground">No networks found</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Create your first network to start managing subnets.</p>
-                    </div>
+                {isLoading ? <LoadingState /> : error ? <ErrorState message={error.message} onRetry={() => mutate()} /> : networks.length === 0 ? (
+                    <EmptyState icon={NetworkIcon} title="No networks found" description="Create your first network to start managing subnets." />
                 ) : (
-                    <Card className="border border-white/40 dark:border-white/10 bg-gradient-to-br from-white/60 to-white/30 dark:from-white/10 dark:to-white/5 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden relative">
-                        {/* Glass Reflection Highlight */}
-                        <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-none z-20 rounded-xl" />
-                        <CardContent className="p-0 relative z-10">
+                    <GlassCard>
+                        <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border/30 hover:bg-transparent">
@@ -117,18 +82,16 @@ export const Networks = () => {
                                                     {item.name}
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="shadow-sm">{item.cidr}</Badge>
-                                            </TableCell>
+                                            <TableCell><Badge variant="outline" className="shadow-sm">{item.cidr}</Badge></TableCell>
                                             <TableCell>{item.vlan_id || "-"}</TableCell>
                                             <TableCell>{item.gateway || "-"}</TableCell>
                                             <TableCell className="text-muted-foreground text-sm">{item.description || "-"}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
+                                                    <Button variant="ghost" size="icon" onClick={() => { setSelectedNetwork(item); setIsDialogOpen(true); }} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
                                                         <Edit2 className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id, item.name)} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
+                                                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: item.id, name: item.name })} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -138,14 +101,23 @@ export const Networks = () => {
                                 </TableBody>
                             </Table>
                         </CardContent>
-                    </Card>
+                    </GlassCard>
                 )}
 
                 <NetworkDialog
                     open={isDialogOpen}
                     onOpenChange={setIsDialogOpen}
-                    onSaved={handleSaved}
+                    onSaved={() => { mutate(); setIsDialogOpen(false); }}
                     initialData={selectedNetwork}
+                />
+
+                <ConfirmDialog
+                    open={!!deleteConfirm}
+                    onOpenChange={(open) => !open && setDeleteConfirm(null)}
+                    onConfirm={() => deleteConfirm && handleDelete(deleteConfirm.id, deleteConfirm.name)}
+                    title="Delete Network?"
+                    description={<>This will permanently delete the <span className="font-semibold text-foreground">{deleteConfirm?.name}</span> network and all associated IP assignments. This action cannot be undone.</>}
+                    confirmLabel="Delete Network"
                 />
             </div>
         </AppLayout>

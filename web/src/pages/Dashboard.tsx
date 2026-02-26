@@ -5,12 +5,18 @@ import type { DashboardResponse, Service } from "../types/api";
 import { fetchApi } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Activity, Server, AlertCircle } from "lucide-react";
+import { ErrorState } from "@/components/ErrorState";
+import { EmptyState } from "@/components/EmptyState";
 
 export const Dashboard = () => {
-    const { data } = useSWR<DashboardResponse>('/api/dashboard', fetchApi, {
+    const { data, error, mutate } = useSWR<DashboardResponse>('/api/dashboard', fetchApi, {
         refreshInterval: 5000,
         revalidateOnFocus: true,
     });
+
+    if (error) {
+        return <AppLayout><ErrorState message={error.message} onRetry={() => mutate()} /></AppLayout>;
+    }
 
     const services = data?.services || [];
     const upCount = services.filter(s => s.status === 'UP').length;
@@ -51,11 +57,7 @@ export const Dashboard = () => {
                 {/* App Grid: Sun-Panel Desktop Icon Style */}
                 <div className="flex flex-wrap justify-center content-start gap-4 sm:gap-5 md:gap-6 lg:gap-8 xl:gap-10 w-full max-w-[900px] mx-auto px-4">
                     {services.length === 0 ? (
-                        <div className="text-center w-full py-16 bg-white/40 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-3xl mt-4 shadow-sm">
-                            <Server className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-foreground">Welcome to your Dashboard</h3>
-                            <p className="text-sm text-muted-foreground mt-1">Go to the Services tab to add your first app tile.</p>
-                        </div>
+                        <EmptyState icon={Server} title="Welcome to your Dashboard" description="Go to the Services tab to add your first app tile." />
                     ) : (
                         services.map((service) => (
                             <ServiceCard key={service.id} service={service} />

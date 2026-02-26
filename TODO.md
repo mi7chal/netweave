@@ -1,5 +1,11 @@
 # Todo
 - [ ] Create working Dockerfile
 - [ ] Create working docker-compose.yml
-- [ ] Add authentication and authorization with OIDC
+- [ ] Create/expand tests
+- [ ] Create github actions for building and pushing docker image
+- [ ] Add authentication and authorization with and without OIDC
 - [ ] Add proper settings and configuration
+- [ ] Add secured or unsecured homepage in settings. When user has no admin priviledge, one should not even see sidebar - just homepage.
+- [ ] Table sorting
+- [ ] Dynamic/static ip info in devices table
+- [ ] Separate dynamic ips from static somehow to make management easier

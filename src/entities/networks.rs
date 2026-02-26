@@ -8,12 +8,12 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub name: String,
-    #[sea_orm(unique)] // Postgres will cast string to CIDR
-    pub cidr: String,
+    #[sea_orm(unique)]
+    pub cidr: IpNetwork,
     #[sea_orm(unique)]
     pub vlan_id: Option<i32>,
-    pub gateway: Option<String>,
-    pub dns_servers: Option<Vec<String>>,
+    pub gateway: Option<IpNetwork>,
+    pub dns_servers: Option<Vec<IpNetwork>>,
     pub description: Option<String>,
 }
 

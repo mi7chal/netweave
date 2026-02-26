@@ -20,6 +20,7 @@ import type { ReactNode } from "react";
 export interface SelectOption {
     label: string;
     value: string;
+    disabled?: boolean;
 }
 
 interface FormSelectFieldProps<TFieldValues extends FieldValues> {
@@ -65,7 +66,12 @@ export function FormSelectField<TFieldValues extends FieldValues>({
                         </FormControl>
                         <SelectContent className="bg-background/95 backdrop-blur-md border border-primary/20 shadow-xl">
                             {options.map((option) => (
-                                <SelectItem key={option.value} value={option.value} className="focus:bg-primary/20 cursor-pointer">
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                    disabled={option.disabled}
+                                    className="focus:bg-primary/20 cursor-pointer"
+                                >
                                     {option.label}
                                 </SelectItem>
                             ))}

@@ -15,7 +15,6 @@ function App() {
       <Route path="/integrations" element={<Integrations />} />
       <Route path="/services" element={<Services />} />
       <Route path="/networks" element={<Networks />} />
-      <Route path="/networks" element={<Networks />} />
       <Route path="/devices" element={<Devices />} />
       <Route path="/devices/:id" element={<DeviceDetailsPage />} />
     </Routes>

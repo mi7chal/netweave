@@ -12,11 +12,11 @@ impl Db {
         params: CreateInterfacePayload,
     ) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
-        let mac = params.mac_address; // String
-
+        let mac_str = params.mac_address.clone();
+        
         let sql = r#"
             INSERT INTO interfaces (id, device_id, name, mac_address, type, created_at)
-            VALUES ($1, $2, $3, $4::macaddr, $5, $6)
+            VALUES ($1, $2, $3, CAST($4 AS macaddr), $5, $6)
         "#;
 
         let stmt = Statement::from_sql_and_values(
@@ -26,7 +26,7 @@ impl Db {
                 new_id.into(),
                 device_id.into(),
                 params.name.into(),
-                mac.map(|m| m.to_string()).into(),
+                mac_str.into(),
                 params.interface_type.into(),
                 Utc::now().into(),
             ],
@@ -45,16 +45,8 @@ impl Db {
 
     pub async fn list_interfaces(&self, device_id: Uuid) -> Result<Vec<Interface>, anyhow::Error> {
         let interfaces = interfaces::Entity::find()
-            .select_only()
-            .column(interfaces::Column::Id)
-            .column(interfaces::Column::DeviceId)
-            .column(interfaces::Column::Name)
-            .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
-            .column(interfaces::Column::Type)
-            .column(interfaces::Column::CreatedAt)
             .filter(interfaces::Column::DeviceId.eq(device_id))
             .order_by_asc(interfaces::Column::Name)
-            .into_model::<interfaces::Model>()
             .all(&self.conn)
             .await?;
 
@@ -69,41 +61,47 @@ impl Db {
             })
             .collect())
     }
+
     pub async fn update_interface(
         &self,
         id: Uuid,
         params: CreateInterfacePayload,
     ) -> Result<Interface, anyhow::Error> {
-        let mac = params.mac_address;
+        let interface: interfaces::ActiveModel = interfaces::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Interface not found"))?
+            .into();
+
+        let mac_str = params.mac_address.clone();
 
         let sql = r#"
             UPDATE interfaces 
-            SET name = $1, mac_address = $2::macaddr
-            WHERE id = $3
-            RETURNING id, device_id, name, mac_address::text, type as interface_type, created_at
+            SET name = $1, type = $2, mac_address = CAST($3 AS macaddr)
+            WHERE id = $4
         "#;
 
         let stmt = Statement::from_sql_and_values(
             DatabaseBackend::Postgres,
             sql,
             vec![
-                params.name.into(),
-                mac.map(|m| m.to_string()).into(),
+                params.name.clone().into(),
+                Some(params.interface_type.clone()).into(),
+                mac_str.clone().into(),
                 id.into(),
             ],
         );
 
-        let i = self.conn.query_one(stmt).await?.ok_or_else(|| anyhow::anyhow!("Interface not found"))?;
-
-        let mac_str: Option<String> = i.try_get("", "mac_address")?;
-        let parsed_mac = mac_str.and_then(|s| mac_address::MacAddress::from_str(&s).ok());
+        self.conn.execute(stmt).await?;
+        
+        let mac = mac_str.and_then(|m| mac_address::MacAddress::from_str(&m).ok());
 
         Ok(Interface {
-            id: i.try_get("", "id")?,
-            device_id: i.try_get("", "device_id")?,
-            name: i.try_get("", "name")?,
-            mac_address: parsed_mac,
-            interface_type: i.try_get("", "interface_type")?,
+            id,
+            device_id: interface.device_id.unwrap(),
+            name: params.name,
+            mac_address: mac,
+            interface_type: Some(params.interface_type),
         })
     }
 }

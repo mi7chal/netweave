@@ -103,7 +103,7 @@ pub async fn oidc_login(State(state): State<AppState>) -> impl IntoResponse {
 #[derive(Deserialize)]
 pub struct AuthCallbackParams {
     code: String,
-    state: String, // CSRF token usually
+    _state: String, // CSRF token usually
 }
 
 pub async fn oidc_callback(

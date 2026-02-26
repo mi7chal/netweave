@@ -57,7 +57,9 @@ async fn main() {
     let app = create_app(state);
 
     // create socket
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8789));
+    let port_str = std::env::var("PORT").unwrap_or_else(|_| "8789".to_string());
+    let port: u16 = port_str.parse().unwrap_or(8789);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::info!("Server listening on {}", addr);
 
     // bind socket to Axium

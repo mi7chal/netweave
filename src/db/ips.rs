@@ -2,8 +2,8 @@ use super::{CreateIpParams, Db};
 use crate::entities::{devices, interfaces, ip_addresses, networks};
 use crate::models::{DeviceIpView, IpStatus, NetworkIpView};
 use sea_orm::*;
-use sea_orm::{QuerySelect, QueryOrder};
-use sea_orm::sea_query::{Expr, Alias};
+use sea_orm::QueryOrder;
+use sea_orm::prelude::IpNetwork;
 use uuid::Uuid;
 
 impl Db {
@@ -26,13 +26,9 @@ impl Db {
         };
 
         let new_id = Uuid::now_v7();
-        let status_str = match params.status {
-            IpStatus::Active => "ACTIVE",
-            IpStatus::Reserved => "RESERVED",
-            IpStatus::Dhcp => "DHCP",
-            IpStatus::Deprecated => "DEPRECATED",
-            IpStatus::Free => "FREE",
-        };
+        
+        use sea_orm::prelude::IpNetwork;
+        let ip_net = IpNetwork::new(params.ip_address, if params.ip_address.is_ipv4() { 32 } else { 128 }).unwrap();
 
         // Raw SQL for complex generic index constrained ON CONFLICT
         let sql = r#"
@@ -40,7 +36,7 @@ impl Db {
                 id, interface_id, network_id, ip_address, mac_address,
                 is_static, status, description
             )
-            VALUES ($1, $2, $3, $4::inet, $5::macaddr, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, CAST($5 AS macaddr), $6, $7, $8)
             ON CONFLICT (network_id, ip_address)
             DO UPDATE SET
                 interface_id = EXCLUDED.interface_id,
@@ -57,10 +53,10 @@ impl Db {
                 new_id.into(),
                 interface_id.into(),
                 params.network_id.into(),
-                params.ip_address.to_string().into(),
-                params.mac_address.map(|m| m.to_string()).into(),
+                ip_net.into(),
+                params.mac_address.map(crate::models::types::MacAddress).into(),
                 params.is_static.into(),
-                status_str.into(),
+                params.status.into_value().into(),
                 params.description.into(),
             ],
         );
@@ -73,8 +69,7 @@ impl Db {
         &self,
         device_id: Uuid,
     ) -> Result<Vec<DeviceIpView>, anyhow::Error> {
-        let backend = self.conn.get_database_backend();
-        let query = ip_addresses::Entity::find()
+        let res = ip_addresses::Entity::find()
             .join(JoinType::InnerJoin, ip_addresses::Relation::Interface.def())
             .join(JoinType::InnerJoin, ip_addresses::Relation::Network.def())
             .filter(interfaces::Column::DeviceId.eq(device_id))
@@ -83,46 +78,28 @@ impl Db {
             .column(ip_addresses::Column::Id)
             .column_as(interfaces::Column::DeviceId, "device_id")
             .column_as(interfaces::Column::Name, "interface_name")
-            .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
-            .column_as(Expr::col(ip_addresses::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
+            .column(ip_addresses::Column::IpAddress)
+            .column(ip_addresses::Column::MacAddress)
             .column(ip_addresses::Column::IsStatic)
             .column(ip_addresses::Column::Status)
             .column_as(networks::Column::Name, "network_name")
-            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "network_cidr")
-            .build(backend);
-
-        let res = self.conn.query_all(query).await?;
-
+            .column(networks::Column::Cidr)
+            .into_tuple::<(Uuid, Uuid, String, IpNetwork, Option<crate::models::types::MacAddress>, bool, IpStatus, String, IpNetwork)>()
+            .all(&self.conn)
+            .await?;
+ 
         let mut views = Vec::new();
-        for row in res {
-            let status_str: String = row.try_get("", "status")?;
-            let status = match status_str.as_str() {
-                "ACTIVE" => IpStatus::Active,
-                "RESERVED" => IpStatus::Reserved,
-                "DHCP" => IpStatus::Dhcp,
-                "DEPRECATED" => IpStatus::Deprecated,
-                _ => IpStatus::Free,
-            };
-
-            let ip_str: String = row.try_get("", "ip_address")?;
-            let cidr_str: String = row.try_get("", "network_cidr")?;
-            let mac: Option<crate::models::types::MacAddress> = row.try_get("", "mac_address")?;
-
+        for (id, device_id, iface_name, ip_net, mac, is_static, status, net_name, net_cidr) in res {
             views.push(DeviceIpView {
-                id: row.try_get("", "id")?,
-                device_id: row.try_get("", "device_id")?,
-                interface_name: row.try_get("", "interface_name")?,
-                ip_address: ip_str
-                    .split('/')
-                    .next()
-                    .unwrap_or("")
-                    .parse()
-                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                id,
+                device_id,
+                interface_name: iface_name,
+                ip_address: ip_net.ip(),
                 mac_address: mac.map(|m| m.0),
-                is_static: row.try_get("", "is_static")?,
+                is_static: Some(is_static),
                 status: Some(status),
-                network_name: row.try_get("", "network_name")?,
-                network_cidr: cidr_str.parse().ok(),
+                network_name: Some(net_name),
+                network_cidr: Some(net_cidr),
             });
         }
 
@@ -133,8 +110,7 @@ impl Db {
         &self,
         network_id: Uuid,
     ) -> Result<Vec<NetworkIpView>, anyhow::Error> {
-        let backend = self.conn.get_database_backend();
-        let query = ip_addresses::Entity::find()
+        let res = ip_addresses::Entity::find()
             .join(JoinType::LeftJoin, ip_addresses::Relation::Interface.def())
             .join_rev(
                 JoinType::LeftJoin,
@@ -147,43 +123,26 @@ impl Db {
             .order_by_asc(ip_addresses::Column::IpAddress)
             .select_only()
             .column(ip_addresses::Column::Id)
-            .column_as(Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text")), "ip_address")
-            .column_as(Expr::col(ip_addresses::Column::MacAddress).cast_as(Alias::new("text")), "mac_address")
+            .column(ip_addresses::Column::IpAddress)
+            .column(ip_addresses::Column::MacAddress)
             .column(ip_addresses::Column::Status)
             .column(ip_addresses::Column::Description)
             .column_as(devices::Column::Hostname, "device_hostname")
             .column_as(interfaces::Column::Name, "interface_name")
-            .build(backend);
-
-        let res = self.conn.query_all(query).await?;
-
+            .into_tuple::<(Uuid, IpNetwork, Option<crate::models::types::MacAddress>, IpStatus, Option<String>, Option<String>, Option<String>)>()
+            .all(&self.conn)
+            .await?;
+ 
         let mut views = Vec::new();
-        for row in res {
-            let status_str: String = row.try_get("", "status")?;
-            let status = match status_str.as_str() {
-                "ACTIVE" => IpStatus::Active,
-                "RESERVED" => IpStatus::Reserved,
-                "DHCP" => IpStatus::Dhcp,
-                "DEPRECATED" => IpStatus::Deprecated,
-                _ => IpStatus::Free,
-            };
-
-            let ip_str: String = row.try_get("", "ip_address")?;
-            let mac: Option<crate::models::types::MacAddress> = row.try_get("", "mac_address")?;
-
+        for (id, ip_net, mac, status, description, hostname, iface_name) in res {
             views.push(NetworkIpView {
-                id: row.try_get("", "id")?,
-                ip_address: ip_str
-                    .split('/')
-                    .next()
-                    .unwrap_or("")
-                    .parse()
-                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                id,
+                ip_address: ip_net.ip(),
                 mac_address: mac.map(|m| m.0),
                 status,
-                description: row.try_get("", "description")?,
-                device_hostname: row.try_get("", "device_hostname").ok(),
-                interface_name: row.try_get("", "interface_name").ok(),
+                description,
+                device_hostname: hostname,
+                interface_name: iface_name,
             });
         }
         Ok(views)
@@ -205,11 +164,9 @@ impl Db {
         let mut active_model: ip_addresses::ActiveModel = ip.into();
 
         if let Some(ip_addr) = params.ip_address {
-            active_model.ip_address = Set(ip_addr.to_string());
-        }
-
-        if let Some(mac) = params.mac_address {
-            active_model.mac_address = Set(mac.map(crate::models::types::MacAddress));
+            use sea_orm::prelude::IpNetwork;
+            let ip_net = IpNetwork::new(ip_addr, if ip_addr.is_ipv4() { 32 } else { 128 }).unwrap();
+            active_model.ip_address = Set(ip_net);
         }
 
         if let Some(is_static) = params.is_static {
@@ -217,21 +174,38 @@ impl Db {
         }
 
         if let Some(status) = params.status {
-            let status_str = match status {
-                IpStatus::Active => "ACTIVE",
-                IpStatus::Reserved => "RESERVED",
-                IpStatus::Dhcp => "DHCP",
-                IpStatus::Deprecated => "DEPRECATED",
-                IpStatus::Free => "FREE",
-            };
-            active_model.status = Set(status_str.to_string());
+            active_model.status = Set(status);
         }
 
         if let Some(desc) = params.description {
             active_model.description = Set(desc);
         }
 
-        let updated = active_model.update(&self.conn).await?;
+        let mut updated = active_model.update(&self.conn).await?;
+
+        // Process mac_address separately with raw SQL to explicitly cast as macaddr 
+        if let Some(mac_opt) = params.mac_address {
+            if let Some(mac) = mac_opt {
+                let sql = "UPDATE ip_addresses SET mac_address = CAST($1 AS macaddr) WHERE id = $2";
+                let stmt = Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    sql,
+                    vec![mac.to_string().into(), updated.id.into()],
+                );
+                self.conn.execute(stmt).await?;
+                updated.mac_address = Some(crate::models::types::MacAddress(mac));
+            } else {
+                let sql = "UPDATE ip_addresses SET mac_address = NULL WHERE id = $1";
+                let stmt = Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    sql,
+                    vec![updated.id.into()],
+                );
+                self.conn.execute(stmt).await?;
+                updated.mac_address = None;
+            }
+        }
+
         Ok(updated)
     }
 }

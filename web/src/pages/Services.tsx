@@ -1,32 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { GlassCard } from "@/components/ui/glass-card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingState } from "@/components/LoadingState";
 import { Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
 import { useState, useMemo } from "react";
 import useSWR from "swr";
@@ -36,111 +21,67 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SearchInput } from "@/components/SearchInput";
 import { PageHeader } from "@/components/PageHeader";
-import type { DeviceListView } from "../types/api";
-
-interface Service {
-    id: string;
-    name: string;
-    base_url: string;
-    icon_url?: string;
-    is_public: boolean;
-    monitor_interval_seconds?: number;
-    status: string;
-    uptime_percentage?: number;
-    device_id?: string;
-}
+import type { Service, DeviceListView } from "../types/api";
 
 export const Services = () => {
-    const { data, isLoading, mutate } = useSWR<{ services: Service[] }>('/api/dashboard', fetchApi, { refreshInterval: 10000 });
-    const { data: devices = [] } = useSWR<DeviceListView[]>('/api/devices', fetchApi);
+    const { data, error: dashboardError, isLoading, mutate } = useSWR<{ services: Service[] }>("/api/dashboard", fetchApi, { refreshInterval: 10000 });
+    const { data: devices = [], error: devicesError } = useSWR<DeviceListView[]>("/api/devices", fetchApi);
     const services = data?.services || [];
+    const error = dashboardError || devicesError;
 
     const [search, setSearch] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [formData, setFormData] = useState<Partial<Service>>({});
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
     const filteredServices = useMemo(() => {
         if (!search.trim()) return services;
         const q = search.toLowerCase();
-        return services.filter(s =>
-            s.name.toLowerCase().includes(q) ||
-            s.base_url.toLowerCase().includes(q)
-        );
+        return services.filter(s => s.name.toLowerCase().includes(q) || s.base_url.toLowerCase().includes(q));
     }, [services, search]);
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
         try {
-            await fetchApi(`/api/services/${id}`, { method: 'DELETE' });
+            await fetchApi(`/api/services/${id}`, { method: "DELETE" });
+            setDeleteConfirm(null);
             mutate();
-            toast.success(`Service deleted`, { description: `${name} has been removed.` });
-        } catch (e) {
-            console.error(e);
-        }
+            toast.success("Service deleted", { description: `${name} has been removed.` });
+        } catch (e) { console.error(e); }
     };
 
     const handleSave = async () => {
         try {
-            const url = selectedService ? `/api/services/${selectedService.id}` : '/api/services';
-
+            const url = selectedService ? `/api/services/${selectedService.id}` : "/api/services";
             await fetchApi(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
             });
-
             mutate();
             setIsDialogOpen(false);
-            toast.success(`Service saved`, { description: `Successfully saved ${formData.name || 'service'}` });
-        } catch (e) {
-            console.error(e);
-        }
+            toast.success("Service saved", { description: `Successfully saved ${formData.name || "service"}` });
+        } catch (e) { console.error(e); }
     };
 
-    const openEdit = (service: Service) => {
-        setSelectedService(service);
-        setFormData(service);
-        setIsDialogOpen(true);
-    };
-
-    const openCreate = () => {
-        setSelectedService(null);
-        setFormData({ is_public: false });
-        setIsDialogOpen(true);
-    };
+    const openEdit = (service: Service) => { setSelectedService(service); setFormData(service); setIsDialogOpen(true); };
+    const openCreate = () => { setSelectedService(null); setFormData({ is_public: false }); setIsDialogOpen(true); };
 
     return (
         <AppLayout>
             <div className="flex flex-col space-y-6">
-                <PageHeader
-                    title="Services"
-                    description="Manage your dashboard applications and their status."
-                >
-                    <SearchInput
-                        value={search}
-                        onChange={setSearch}
-                        placeholder="Search services..."
-                        className="w-full md:w-64"
-                    />
+                <PageHeader title="Services" description="Manage your dashboard applications and their status.">
+                    <SearchInput value={search} onChange={setSearch} placeholder="Search services..." className="w-full md:w-64" />
                     <Button onClick={openCreate} className="gap-2 shadow-sm rounded-full h-10 px-5 flex-shrink-0 hover:scale-105 transition-all duration-300">
                         <Plus className="h-4 w-4" /> Add Service
                     </Button>
                 </PageHeader>
 
-                {isLoading ? (
-                    <div className="text-center py-10 text-muted-foreground animate-pulse font-medium">Loading...</div>
-                ) : services.length === 0 ? (
-                    <div className="text-center py-20 bg-white/40 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-3xl mt-6 shadow-sm">
-                        <Plus className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground">No services found</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Add your first service to track its status.</p>
-                    </div>
+                {isLoading ? <LoadingState /> : error ? <ErrorState message={error.message} onRetry={() => mutate()} /> : services.length === 0 ? (
+                    <EmptyState icon={Plus} title="No services found" description="Add your first service to track its status." />
                 ) : (
-                    <Card className="border border-white/40 dark:border-white/10 bg-gradient-to-br from-white/60 to-white/30 dark:from-white/10 dark:to-white/5 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden relative">
-                        {/* Glass Reflection Highlight */}
-                        <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-none z-20 rounded-xl" />
-                        <CardContent className="p-0 relative z-10">
+                    <GlassCard>
+                        <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border/30 hover:bg-transparent">
@@ -162,20 +103,15 @@ export const Services = () => {
                                                 </a>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={item.is_public ? "outline" : "secondary"} className="shadow-sm">
-                                                    {item.is_public ? "Public" : "Private"}
-                                                </Badge>
+                                                <Badge variant={item.is_public ? "outline" : "secondary"} className="shadow-sm">{item.is_public ? "Public" : "Private"}</Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span className={cn(
-                                                        "text-sm font-medium",
-                                                        (item.uptime_percentage ?? 100) >= 99 ? "text-green-500" :
-                                                            (item.uptime_percentage ?? 100) >= 95 ? "text-amber-500" : "text-destructive"
-                                                    )}>
-                                                        {(item.uptime_percentage ?? 100).toFixed(1)}%
-                                                    </span>
-                                                </div>
+                                                <span className={cn(
+                                                    "text-sm font-medium",
+                                                    (item.uptime_percentage ?? 100) >= 99 ? "text-green-500" : (item.uptime_percentage ?? 100) >= 95 ? "text-amber-500" : "text-destructive"
+                                                )}>
+                                                    {(item.uptime_percentage ?? 100).toFixed(1)}%
+                                                </span>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={item.status === "UP" ? "outline" : item.status === "UNKNOWN" ? "secondary" : "destructive"} className={cn(
@@ -191,7 +127,7 @@ export const Services = () => {
                                                     <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
                                                         <Edit2 className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id, item.name)} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
+                                                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: item.id, name: item.name })} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -201,68 +137,41 @@ export const Services = () => {
                                 </TableBody>
                             </Table>
                         </CardContent>
-                    </Card>
+                    </GlassCard>
                 )}
 
+                {/* Create/Edit Service Dialog */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
                         <DialogHeader>
                             <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{selectedService ? "Edit Service" : "New Service"}</DialogTitle>
-                            <DialogDescription className="text-muted-foreground/80">
-                                Configure service details and monitoring.
-                            </DialogDescription>
+                            <DialogDescription className="text-muted-foreground/80">Configure service details and monitoring.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="name" className="text-sm font-medium">Name</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="Plex"
-                                    value={formData.name || ""}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
+                                <Input id="name" placeholder="Plex" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="url" className="text-sm font-medium">URL</Label>
-                                <Input
-                                    id="url"
-                                    placeholder="http://192.168.1.50:32400"
-                                    value={formData.base_url || ""}
-                                    onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
-                                    className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
-                                />
+                                <Input id="url" placeholder="http://192.168.1.50:32400" value={formData.base_url || ""} onChange={(e) => setFormData({ ...formData, base_url: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
                             </div>
                             <div className="grid gap-2">
                                 <Label className="text-sm font-medium">Link to Device</Label>
-                                <Select
-                                    value={formData.device_id || "none"}
-                                    onValueChange={(val) => setFormData({ ...formData, device_id: val === "none" ? undefined : val })}
-                                >
-                                    <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg">
-                                        <SelectValue placeholder="Select a device (Optional)" />
-                                    </SelectTrigger>
+                                <Select value={formData.device_id || "none"} onValueChange={(val) => setFormData({ ...formData, device_id: val === "none" ? undefined : val })}>
+                                    <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg"><SelectValue placeholder="Select a device (Optional)" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">None</SelectItem>
-                                        {devices.map(device => (
-                                            <SelectItem key={device.id} value={device.id}>
-                                                {device.hostname}
-                                            </SelectItem>
-                                        ))}
+                                        {devices.map(device => <SelectItem key={device.id} value={device.id}>{device.hostname}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4 transition-all hover:bg-secondary/40">
                                 <div className="space-y-0.5">
                                     <Label className="text-base font-medium">Publicly Visible</Label>
-                                    <p className="text-sm text-muted-foreground/80">
-                                        Show this service on the public dashboard.
-                                    </p>
+                                    <p className="text-sm text-muted-foreground/80">Show this service on the public dashboard.</p>
                                 </div>
-                                <Switch
-                                    checked={formData.is_public}
-                                    onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
-                                />
+                                <Switch checked={formData.is_public} onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })} />
                             </div>
                         </div>
                         <DialogFooter className="border-t border-border/20 pt-4 mt-2">
@@ -271,6 +180,15 @@ export const Services = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                <ConfirmDialog
+                    open={!!deleteConfirm}
+                    onOpenChange={(open) => !open && setDeleteConfirm(null)}
+                    onConfirm={() => deleteConfirm && handleDelete(deleteConfirm.id, deleteConfirm.name)}
+                    title="Delete Service?"
+                    description={<>This will permanently remove <span className="font-semibold text-foreground">{deleteConfirm?.name}</span> and its monitoring history. This action cannot be undone.</>}
+                    confirmLabel="Delete Service"
+                />
             </div>
         </AppLayout>
     );

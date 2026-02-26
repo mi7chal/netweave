@@ -1,4 +1,3 @@
-use crate::models::types::MacAddress;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +8,8 @@ pub struct Model {
     pub id: Uuid,
     pub device_id: Uuid,
     pub name: String,
-    pub mac_address: Option<MacAddress>,
+    #[sea_orm(select_as = "text", save_as = "macaddr")]
+    pub mac_address: Option<crate::models::types::MacAddress>,
     pub r#type: Option<String>,
     pub created_at: DateTimeWithTimeZone,
 }

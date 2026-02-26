@@ -78,6 +78,7 @@ export interface DeviceListView {
     created_at: string;
     primary_ip: string | null;
     mac_address: string | null;
+    is_static: boolean | null;
 }
 
 export interface InterfaceWithIps extends Interface {
@@ -107,4 +108,5 @@ export interface CreateDevicePayload {
     ram_gb?: number;
     storage_gb?: number;
     mac_address?: string; // Initial MAC
+    ip_address?: string;  // Optional static IP
 }

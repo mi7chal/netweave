@@ -24,7 +24,37 @@ impl IntoResponse for AppError {
         let (status, msg) = match self {
             AppError::Internal(err) => {
                 tracing::error!("AppError: {:?}", err);
-                (StatusCode::INTERNAL_SERVER_ERROR, "An internal server error occurred.".to_string())
+
+                let mut error_msg = "An internal server error occurred.".to_string();
+
+                // Check for database connection issues specifically
+                // sea_orm errors
+                if let Some(db_err) = err.downcast_ref::<sea_orm::DbErr>() {
+                    tracing::debug!("Detected SeaORM error: {}", db_err);
+                    match db_err {
+                        sea_orm::DbErr::Conn(msg) => {
+                            error_msg = format!("Database connection error: {}", msg);
+                        }
+                        sea_orm::DbErr::ConnectionAcquire(msg) => {
+                            error_msg = format!("Database connection error: {}", msg);
+                        }
+                        _ => {
+                            // If it's a dry sea_orm error but not connection related, we might still want more info in dev
+                        }
+                    }
+                }
+                // direct sqlx errors (sometimes they aren't wrapped by sea_orm in a way that downcasts to DbErr directly)
+                else if let Some(sqlx_err) = err.downcast_ref::<sqlx::Error>() {
+                    tracing::debug!("Detected sqlx error: {}", sqlx_err);
+                    match sqlx_err {
+                        sqlx::Error::Io(_) | sqlx::Error::PoolClosed | sqlx::Error::PoolTimedOut => {
+                            error_msg = format!("Database connection error: {}", sqlx_err);
+                        }
+                        _ => {}
+                    }
+                }
+
+                (StatusCode::INTERNAL_SERVER_ERROR, error_msg)
             },
             AppError::BadRequest(msg) => {
                 (StatusCode::BAD_REQUEST, msg)
@@ -33,7 +63,7 @@ impl IntoResponse for AppError {
                 (StatusCode::NOT_FOUND, msg)
             }
         };
-        
+
         let body = Json(ErrorResponse {
             error: msg,
         });

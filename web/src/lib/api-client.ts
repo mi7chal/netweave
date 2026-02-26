@@ -23,7 +23,8 @@ export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T
                     errorBody.includes("proxy error") ||
                     errorBody.includes("AggregateError") ||
                     errorBody.includes("Failed to acquire connection from pool") ||
-                    errorBody.includes("Connection pool timed out")
+                    errorBody.includes("Connection pool timed out") ||
+                    errorBody.includes("Database connection error")
                 ))) {
                 if (onBackendDown) onBackendDown();
             }

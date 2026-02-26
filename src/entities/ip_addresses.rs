@@ -1,4 +1,4 @@
-use crate::models::types::MacAddress;
+use crate::models::types::IpStatus;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -9,9 +9,10 @@ pub struct Model {
     pub id: Uuid,
     pub network_id: Uuid,
     pub interface_id: Option<Uuid>,
-    pub ip_address: String,
-    pub mac_address: Option<MacAddress>,
-    pub status: String,
+    pub ip_address: IpNetwork,
+    #[sea_orm(select_as = "text", save_as = "macaddr")]
+    pub mac_address: Option<crate::models::types::MacAddress>,
+    pub status: IpStatus,
     pub description: Option<String>,
     pub is_static: bool,
 }

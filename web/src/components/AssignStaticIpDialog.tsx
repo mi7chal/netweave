@@ -19,9 +19,12 @@ interface AssignStaticIpDialogProps {
     onSubmit: (ip: string) => void;
     defaultIp: string;
     macLabel?: string;
+    title?: string;
+    description?: string;
+    submitLabel?: string;
 }
 
-export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, macLabel }: AssignStaticIpDialogProps) {
+export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, macLabel, title, description, submitLabel }: AssignStaticIpDialogProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: { ip: defaultIp },
@@ -41,9 +44,9 @@ export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, 
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Assign Static IP</DialogTitle>
+                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{title || "Assign Static IP"}</DialogTitle>
                     <DialogDescription className="text-muted-foreground/80">
-                        Enter the IPv4 address to reserve for this {macLabel ? `interface (${macLabel})` : 'device'}.
+                        {description || (macLabel ? `Enter the IPv4 address to reserve for this interface (${macLabel}).` : "Enter the IPv4 address to reserve for this device.")}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -57,7 +60,7 @@ export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, 
                         />
                         <DialogFooter className="border-t border-border/20 pt-4 mt-2">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>
-                            <Button type="submit">Confirm Reservation</Button>
+                            <Button type="submit">{submitLabel || "Confirm Reservation"}</Button>
                         </DialogFooter>
                     </form>
                 </Form>

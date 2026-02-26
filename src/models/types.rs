@@ -1,70 +1,52 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use sea_orm::{TryGetError, Value, DbErr};
 use std::str::FromStr;
+use sea_orm::{TryGetError, Value, DbErr, EnumIter, DeriveActiveEnum};
+use sea_orm::sea_query::{ColumnType, ValueType, ValueTypeErr, Nullable, ArrayType};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+/// SeaORM-compatible wrapper for PostgreSQL native `MACADDR` columns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MacAddress(pub mac_address::MacAddress);
 
-impl sea_orm::sea_query::Nullable for MacAddress {
-    fn null() -> Value {
-        Value::String(None)
+impl fmt::Display for MacAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 impl From<MacAddress> for Value {
-    fn from(m: MacAddress) -> Self {
-        Value::String(Some(Box::new(m.0.to_string())))
+    fn from(val: MacAddress) -> Self {
+        Value::String(Some(Box::new(val.0.to_string())))
     }
 }
 
 impl sea_orm::TryGetable for MacAddress {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let s = <String as sea_orm::TryGetable>::try_get_by(res, idx)?;
-        let val = mac_address::MacAddress::from_str(&s).map_err(|_| {
-            TryGetError::DbErr(DbErr::Type(format!("Failed to parse MacAddress from string: {}", s)))
-        })?;
-        Ok(MacAddress(val))
+    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> Result<Self, TryGetError> {
+        let val: Option<String> = res.try_get_by(index)?;
+        match val {
+            Some(v) => mac_address::MacAddress::from_str(&v)
+                .map(MacAddress)
+                .map_err(|e| TryGetError::DbErr(DbErr::Type(format!("Invalid MAC: {e}")))),
+            None => Err(TryGetError::Null("mac_address".to_string())),
+        }
     }
 }
 
-impl sea_orm::sea_query::ValueType for MacAddress {
-    fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
-         match v {
-            Value::String(Some(s)) => {
-                let m = mac_address::MacAddress::from_str(&s).map_err(|_| sea_orm::sea_query::ValueTypeErr)?;
-                Ok(MacAddress(m))
-            },
-            _ => Err(sea_orm::sea_query::ValueTypeErr),
+impl ValueType for MacAddress {
+    fn try_from(v: Value) -> Result<Self, ValueTypeErr> {
+        match v {
+            Value::String(Some(s)) => mac_address::MacAddress::from_str(&s).map(MacAddress).map_err(|_| ValueTypeErr),
+            _ => Err(ValueTypeErr),
         }
     }
 
-    fn type_name() -> String {
-        "MacAddress".to_owned()
-    }
-    
-    fn array_type() -> sea_orm::sea_query::ArrayType {
-         sea_orm::sea_query::ArrayType::String
-    }
-
-    fn column_type() -> sea_orm::sea_query::ColumnType {
-        sea_orm::sea_query::ColumnType::Text
-    }
+    fn type_name() -> String { "MacAddress".to_owned() }
+    fn array_type() -> ArrayType { ArrayType::String }
+    fn column_type() -> ColumnType { ColumnType::custom("macaddr") }
 }
 
-// Implement Deref to make accessing the inner MacAddress easier
-impl std::ops::Deref for MacAddress {
-    type Target = mac_address::MacAddress;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ToString for MacAddress {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
+impl Nullable for MacAddress {
+    fn null() -> Value { Value::String(None) }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -92,13 +74,34 @@ impl Default for DeviceType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+impl From<&str> for DeviceType {
+    fn from(s: &str) -> Self {
+        match s {
+            "PHYSICAL" => Self::Physical,
+            "VM" => Self::Vm,
+            "LXC" => Self::Lxc,
+            "CONTAINER" => Self::Container,
+            "SWITCH" => Self::Switch,
+            "AP" => Self::Ap,
+            "ROUTER" => Self::Router,
+            _ => Self::Other,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, EnumIter, DeriveActiveEnum)]
 #[sqlx(type_name = "varchar", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sea_orm(rs_type = "String", db_type = "Text", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IpStatus {
+    #[sea_orm(string_value = "ACTIVE")]
     Active,
+    #[sea_orm(string_value = "RESERVED")]
     Reserved,
+    #[sea_orm(string_value = "DHCP")]
     Dhcp,
+    #[sea_orm(string_value = "DEPRECATED")]
     Deprecated,
+    #[sea_orm(string_value = "FREE")]
     Free,
 }
 

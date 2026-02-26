@@ -1,5 +1,5 @@
 use super::Db;
-use crate::entities::{devices, interfaces, ip_addresses, services};
+use crate::entities::{devices, interfaces, ip_addresses, networks, services};
 use crate::models::{
     CreateDevicePayload, Device, DeviceDetails, DeviceListView, DeviceType, InterfaceWithIps,
 };
@@ -57,18 +57,9 @@ impl Db {
 
         let device_ids: Vec<Uuid> = devices_models.iter().map(|d| d.id).collect();
 
-        // Fetch primary interfaces (eth0)
         let interfaces_models = interfaces::Entity::find()
             .filter(interfaces::Column::DeviceId.is_in(device_ids))
             .filter(interfaces::Column::Name.eq("eth0"))
-            .select_only()
-            .column(interfaces::Column::Id)
-            .column(interfaces::Column::DeviceId)
-            .column(interfaces::Column::Name)
-            .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
-            .column(interfaces::Column::Type)
-            .column(interfaces::Column::CreatedAt)
-            .into_model::<interfaces::Model>()
             .all(&self.conn)
             .await?;
 
@@ -78,52 +69,43 @@ impl Db {
         for i in &interfaces_models {
             device_interface_map.insert(i.device_id, i);
         }
-
-        // Fetch primary IPs for these interfaces
-        let mut interface_ip_map = HashMap::new();
-        if !interface_ids.is_empty() {
-            let ips_models = ip_addresses::Entity::find()
+        let mut interface_ip_map: HashMap<Uuid, &ip_addresses::Model> = HashMap::new();
+        let ips_models = if !interface_ids.is_empty() {
+            ip_addresses::Entity::find()
                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
-                .select_only()
-                .column(ip_addresses::Column::Id)
-                .column(ip_addresses::Column::InterfaceId)
-                .column(ip_addresses::Column::NetworkId)
-                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::IpAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "ip_address")
-                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
-                .column(ip_addresses::Column::IsStatic)
-                .column(ip_addresses::Column::Status)
-                .column(ip_addresses::Column::Description)
-                .into_model::<ip_addresses::Model>()
                 .all(&self.conn)
-                .await?;
+                .await?
+        } else {
+            vec![]
+        };
 
-            for ip in ips_models {
-                // Just take the first one found for the interface
-                interface_ip_map.entry(ip.interface_id.unwrap()).or_insert(ip);
+        // Prefer static IPs when choosing the primary IP for display
+        for ip in &ips_models {
+            let iface_id = ip.interface_id.unwrap();
+            let existing = interface_ip_map.get(&iface_id);
+            let should_insert = match existing {
+                None => true,
+                Some(current) => !current.is_static && ip.is_static,
+            };
+            if should_insert {
+                interface_ip_map.insert(iface_id, ip);
             }
         }
 
         Ok(devices_models
             .into_iter()
             .map(|d| {
-                let dt = match d.r#type.as_str() {
-                    "PHYSICAL" => DeviceType::Physical,
-                    "VM" => DeviceType::Vm,
-                    "LXC" => DeviceType::Lxc,
-                    "CONTAINER" => DeviceType::Container,
-                    "SWITCH" => DeviceType::Switch,
-                    "AP" => DeviceType::Ap,
-                    "ROUTER" => DeviceType::Router,
-                    _ => DeviceType::Other,
-                };
+                let dt: DeviceType = d.r#type.as_str().into();
                 
                 let primary_interface = device_interface_map.get(&d.id);
                 let mac_address = primary_interface
                     .and_then(|i| i.mac_address.as_ref().map(|m| m.0));
 
-                let primary_ip = primary_interface
-                    .and_then(|i| interface_ip_map.get(&i.id))
-                    .and_then(|ip| ip.ip_address.split('/').next().unwrap_or("").parse().ok());
+                let primary_ip_record = primary_interface
+                    .and_then(|i| interface_ip_map.get(&i.id));
+
+                let primary_ip = primary_ip_record.map(|ip| ip.ip_address.ip());
+                let is_static = primary_ip_record.map(|ip| ip.is_static);
 
                 DeviceListView {
                     id: d.id,
@@ -133,6 +115,7 @@ impl Db {
                     created_at: d.created_at.into(),
                     primary_ip,
                     mac_address,
+                    is_static,
                 }
             })
             .collect())
@@ -152,71 +135,38 @@ impl Db {
         // Fetch all interfaces
         let interfaces_models = interfaces::Entity::find()
             .filter(interfaces::Column::DeviceId.eq(d.id))
-            .select_only()
-            .column(interfaces::Column::Id)
-            .column(interfaces::Column::DeviceId)
-            .column(interfaces::Column::Name)
-            .column_as(sea_orm::sea_query::Expr::col(interfaces::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
-            .column(interfaces::Column::Type)
-            .column(interfaces::Column::CreatedAt)
-            .into_model::<interfaces::Model>()
             .all(&self.conn)
             .await?;
 
         // Fetch all IPs for these interfaces
         let interface_ids: Vec<Uuid> = interfaces_models.iter().map(|i| i.id).collect();
         let mut ips_map: HashMap<Uuid, Vec<crate::models::IpAddress>> = HashMap::new();
-
+ 
         if !interface_ids.is_empty() {
              let ips_models = ip_addresses::Entity::find()
                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
-                .select_only()
-                .column(ip_addresses::Column::Id)
-                .column(ip_addresses::Column::InterfaceId)
-                .column(ip_addresses::Column::NetworkId)
-                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::IpAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "ip_address")
-                .column_as(sea_orm::sea_query::Expr::col(ip_addresses::Column::MacAddress).cast_as(sea_orm::sea_query::Alias::new("text")), "mac_address")
-                .column(ip_addresses::Column::IsStatic)
-                .column(ip_addresses::Column::Status)
-                .column(ip_addresses::Column::Description)
-                .into_model::<ip_addresses::Model>()
                 .all(&self.conn)
                 .await?;
             
             for ip in ips_models {
-                let pid = ip.interface_id.unwrap();
-                let status = match ip.status.as_str() {
-                    "ACTIVE" => crate::models::IpStatus::Active,
-                    "RESERVED" => crate::models::IpStatus::Reserved,
-                    "DHCP" => crate::models::IpStatus::Dhcp,
-                     _ => crate::models::IpStatus::Active, // Default
-                };
+                if let Some(interface_id) = ip.interface_id {
+                    let ip_entity = crate::models::IpAddress {
+                        id: ip.id,
+                        network_id: ip.network_id,
+                        interface_id: ip.interface_id,
+                        ip_address: ip.ip_address.ip(),
+                        mac_address: ip.mac_address.map(|m| m.0),
+                        status: ip.status,
+                        description: ip.description,
+                        is_static: ip.is_static,
+                    };
 
-                let ip_entity = crate::models::IpAddress {
-                    id: ip.id,
-                    network_id: ip.network_id,
-                    interface_id: ip.interface_id,
-                    ip_address: ip.ip_address.split('/').next().unwrap_or("").parse().unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
-                    mac_address: ip.mac_address.map(|m| m.0),
-                    status,
-                    description: ip.description,
-                    is_static: ip.is_static,
-                };
-
-                ips_map.entry(pid).or_default().push(ip_entity);
+                    ips_map.entry(interface_id).or_default().push(ip_entity);
+                }
             }
         }
 
-        let dt = match d.r#type.as_str() {
-            "PHYSICAL" => DeviceType::Physical,
-            "VM" => DeviceType::Vm,
-            "LXC" => DeviceType::Lxc,
-            "CONTAINER" => DeviceType::Container,
-            "SWITCH" => DeviceType::Switch,
-            "AP" => DeviceType::Ap,
-            "ROUTER" => DeviceType::Router,
-            _ => DeviceType::Other,
-        };
+        let dt: DeviceType = d.r#type.as_str().into();
 
         let device_entity = Device {
             id: d.id,
@@ -289,28 +239,61 @@ impl Db {
         device.insert(&txn).await?;
 
         // Create default interface 'eth0'
+        let mac_str = params.mac_address.clone();
         let interface_id = Uuid::now_v7();
-        let mac = params.mac_address;
-
         let sql = r#"
             INSERT INTO interfaces (id, device_id, name, mac_address, type, created_at)
-            VALUES ($1, $2, $3, $4::macaddr, $5, $6)
+            VALUES ($1, $2, $3, CAST($4 AS macaddr), $5, $6)
         "#;
-
         let stmt = Statement::from_sql_and_values(
             DatabaseBackend::Postgres,
             sql,
             vec![
                 interface_id.into(),
                 new_id.into(),
-                "eth0".into(),
-                mac.map(|m| m.to_string()).into(),
-                "ethernet".into(),
+                "eth0".to_string().into(),
+                mac_str.into(),
+                Some("ethernet".to_string()).into(),
                 chrono::Utc::now().into(),
             ],
         );
-
         txn.execute(stmt).await?;
+
+        // If an IP address was provided, create an IP assignment
+        if let Some(ip_str) = params.ip_address {
+            if let Ok(ip_addr) = ip_str.parse::<std::net::IpAddr>() {
+                // Find the matching network by CIDR
+                let all_networks = networks::Entity::find().all(&txn).await?;
+                let matching_network = all_networks.iter().find(|n| n.cidr.contains(ip_addr));
+
+                if let Some(network) = matching_network {
+                    use sea_orm::prelude::IpNetwork;
+                    let ip_net = IpNetwork::new(ip_addr, if ip_addr.is_ipv4() { 32 } else { 128 }).unwrap();
+                    let ip_id = Uuid::now_v7();
+
+                    let ip_sql = r#"
+                        INSERT INTO ip_addresses (id, interface_id, network_id, ip_address, is_static, status)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        ON CONFLICT (network_id, ip_address) DO NOTHING
+                    "#;
+                    let ip_stmt = Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        ip_sql,
+                        vec![
+                            ip_id.into(),
+                            interface_id.into(),
+                            network.id.into(),
+                            ip_net.into(),
+                            true.into(),
+                            "ACTIVE".to_string().into(),
+                        ],
+                    );
+                    txn.execute(ip_stmt).await?;
+                } else {
+                    tracing::warn!("No matching network found for IP {}, skipping IP assignment", ip_addr);
+                }
+            }
+        }
 
         txn.commit().await?;
 
@@ -344,7 +327,7 @@ impl Db {
         // Update eth0 mac if provided
         if let Some(mac_str) = params.mac_address {
             // Try parsing first
-            if let Ok(mac) = mac_str.parse::<mac_address::MacAddress>() {
+            if let Ok(_mac) = mac_str.parse::<mac_address::MacAddress>() {
                 // Try find existing eth0
                 let eth0 = interfaces::Entity::find()
                     .filter(interfaces::Column::DeviceId.eq(id))
@@ -353,21 +336,35 @@ impl Db {
                     .await?;
 
                 if let Some(eth0_model) = eth0 {
-                    let mut eth0: interfaces::ActiveModel = eth0_model.into();
-                    eth0.mac_address = Set(Some(crate::models::types::MacAddress(mac)));
-                    eth0.update(&txn).await?;
+                    let sql = r#"
+                        UPDATE interfaces SET mac_address = CAST($1 AS macaddr)
+                        WHERE id = $2
+                    "#;
+                    let stmt = Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        sql,
+                        vec![mac_str.into(), eth0_model.id.into()],
+                    );
+                    txn.execute(stmt).await?;
                 } else {
                     // create if missing
-                    let interface = interfaces::ActiveModel {
-                        id: Set(Uuid::now_v7()),
-                        device_id: Set(id),
-                        name: Set("eth0".to_string()),
-                        mac_address: Set(Some(crate::models::types::MacAddress(mac))),
-                        r#type: Set(Some("ethernet".to_string())),
-                        created_at: Set(chrono::Utc::now().into()),
-                        ..Default::default()
-                    };
-                    interface.insert(&txn).await?;
+                    let sql = r#"
+                        INSERT INTO interfaces (id, device_id, name, mac_address, type, created_at)
+                        VALUES ($1, $2, $3, CAST($4 AS macaddr), $5, $6)
+                    "#;
+                    let stmt = Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        sql,
+                        vec![
+                            Uuid::now_v7().into(),
+                            id.into(),
+                            "eth0".to_string().into(),
+                            mac_str.into(),
+                            Some("ethernet".to_string()).into(),
+                            chrono::Utc::now().into(),
+                        ],
+                    );
+                    txn.execute(stmt).await?;
                 }
             }
         }

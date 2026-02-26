@@ -27,12 +27,21 @@ pub struct IntegrationDhcpLease {
     pub is_static: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct IntegrationNetwork {
+    pub name: String,
+    pub cidr: String,
+    pub gateway: Option<String>,
+    pub vlan_id: Option<i32>,
+}
+
 #[async_trait]
 pub trait IntegrationProvider: Send + Sync {
     fn provider_id(&self) -> &str;
     fn integration_type(&self) -> IntegrationType;
     async fn health_check(&self) -> Result<()>;
     async fn fetch_services(&self) -> Result<Vec<CreateServicePayload>>;
+    async fn fetch_networks(&self) -> Result<Vec<IntegrationNetwork>>;
     async fn fetch_devices(&self) -> Result<Vec<IntegrationDhcpLease>>;
     async fn push_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()>;
     async fn delete_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()>;
@@ -87,12 +96,36 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
     // 1. Sync Services (DNS Rewrites) - Removed as per user request (logic kept as no-op in adguard)
     let _ = provider.fetch_services().await?; 
     
-    // 2. Sync Devices (DHCP Leases)
+    // 2. Sync Networks
+    let fetched_networks = provider.fetch_networks().await?;
+    tracing::info!("Integration {} returned {} networks", model.name, fetched_networks.len());
+    let mut all_networks = state.db.list_networks().await?;
+
+    for net_payload in fetched_networks {
+        let exists = all_networks.iter().any(|n| n.cidr.to_string() == net_payload.cidr);
+        if !exists {
+            tracing::info!("Auto-importing network {} ({}) from integration", net_payload.name, net_payload.cidr);
+            
+            use std::str::FromStr;
+            let cidr = sqlx::types::ipnetwork::IpNetwork::from_str(&net_payload.cidr)
+                .map_err(|e| anyhow::anyhow!("Invalid CIDR from integration: {}", e))?;
+            let gateway = net_payload.gateway.and_then(|g| g.parse::<std::net::IpAddr>().ok());
+
+            state.db.create_network(crate::db::CreateNetworkParams {
+                name: net_payload.name,
+                cidr,
+                gateway,
+                vlan_id: net_payload.vlan_id,
+                dns_servers: None,
+                description: Some(format!("Auto-imported from {} integration", model.name)),
+            }).await?;
+            // Refresh local cache
+            all_networks = state.db.list_networks().await?;
+        }
+    }
+
+    // 3. Sync Devices (DHCP Leases)
     let fetched_devices = provider.fetch_devices().await?;
-    
-    // Cache networks for IP matching
-    // Use db abstraction which handles casting
-    let all_networks = state.db.list_networks().await?;
 
     for payload in fetched_devices {
         let mac = payload.mac_address.to_lowercase();
@@ -103,7 +136,6 @@ pub async fn process_integration(state: &AppState, model: &integrations::Model) 
             continue;
         }
 
-        // Check if Interface exists (Primary definition of device identity here)
         // Check if Interface exists (Primary definition of device identity here)
         let existing_interface = interfaces::Entity::find()
             .select_only()

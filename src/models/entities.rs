@@ -111,6 +111,7 @@ pub struct DeviceListView {
     // Flatted fields for list view
     pub primary_ip: Option<IpAddr>,
     pub mac_address: Option<MacAddress>,
+    pub is_static: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -2,60 +2,35 @@ use super::{CreateNetworkParams, Db};
 use crate::entities::networks;
 use crate::models::Network;
 use sea_orm::*;
-use sea_orm::{QuerySelect, QueryOrder}; 
-use sea_orm::sea_query::{Expr, Alias};
+use sea_orm::QueryOrder; 
+use sea_orm::prelude::IpNetwork;
 use uuid::Uuid;
 
 impl Db {
     pub async fn list_networks(&self) -> Result<Vec<Network>, anyhow::Error> {
         let networks_models = networks::Entity::find()
-            .select_only()
-            .column(networks::Column::Id)
-            .column(networks::Column::Name)
-            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "cidr")
-            .column(networks::Column::VlanId)
-            .column_as(Expr::col(networks::Column::Gateway).cast_as(Alias::new("text")), "gateway")
-            // Casting INET[] to text[] for Vec<String> decoding
-            .column_as(Expr::col(networks::Column::DnsServers).cast_as(Alias::new("text[]")), "dns_servers")
-            .column(networks::Column::Description)
             .order_by_asc(networks::Column::Name)
-            .into_model::<networks::Model>()
             .all(&self.conn)
             .await?;
 
-        // Map back to models::Network. String -> IpNetwork parsing needed.
-        let mut result = Vec::new();
-        for n in networks_models {
-            result.push(Network {
-                id: n.id,
-                name: n.name,
-                cidr: n.cidr.parse()?, 
-                vlan_id: n.vlan_id,
-                gateway: n.gateway
-                    .as_deref()
-                    .and_then(|s| s.split('/').next())
-                    .map(|s| s.parse())
-                    .transpose()?,
-                dns_servers: n
-                    .dns_servers
-                    .map(|v| v.iter().filter_map(|s| s.split('/').next()?.parse().ok()).collect()),
-                description: n.description,
-            });
-        }
+        // Map to models::Network
+        let result = networks_models.into_iter().map(|n| Network {
+            id: n.id,
+            name: n.name,
+            cidr: n.cidr,
+            vlan_id: n.vlan_id,
+            gateway: n.gateway.map(|gn| gn.ip()),
+            dns_servers: n.dns_servers.map(|v| {
+                v.iter().map(|n| n.ip()).collect()
+            }),
+            description: n.description,
+        }).collect();
+
         Ok(result)
     }
 
     pub async fn get_network(&self, id: Uuid) -> Result<Option<Network>, anyhow::Error> {
         let network_model = networks::Entity::find_by_id(id)
-            .select_only()
-            .column(networks::Column::Id)
-            .column(networks::Column::Name)
-            .column_as(Expr::col(networks::Column::Cidr).cast_as(Alias::new("text")), "cidr")
-            .column(networks::Column::VlanId)
-            .column_as(Expr::col(networks::Column::Gateway).cast_as(Alias::new("text")), "gateway")
-            .column_as(Expr::col(networks::Column::DnsServers).cast_as(Alias::new("text[]")), "dns_servers")
-            .column(networks::Column::Description)
-            .into_model::<networks::Model>()
             .one(&self.conn)
             .await?;
 
@@ -63,16 +38,12 @@ impl Db {
             Ok(Some(Network {
                 id: n.id,
                 name: n.name,
-                cidr: n.cidr.parse()?,
+                cidr: n.cidr,
                 vlan_id: n.vlan_id,
-                gateway: n.gateway
-                    .as_deref()
-                    .and_then(|s| s.split('/').next())
-                    .map(|s| s.parse())
-                    .transpose()?,
-                dns_servers: n
-                    .dns_servers
-                    .map(|v| v.iter().filter_map(|s| s.split('/').next()?.parse().ok()).collect()),
+                gateway: n.gateway.map(|gn| gn.ip()),
+                dns_servers: n.dns_servers.map(|v| {
+                    v.iter().map(|n| n.ip()).collect()
+                }),
                 description: n.description,
             }))
         } else {
@@ -83,15 +54,23 @@ impl Db {
     pub async fn create_network(&self, params: CreateNetworkParams) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
 
+        let gateway = params.gateway.map(|ip| {
+             IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap()
+        });
+
+        let dns_servers = params.dns_servers.map(|v| {
+            v.into_iter()
+                .map(|ip| IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap())
+                .collect::<Vec<IpNetwork>>()
+        });
+
         let network = networks::ActiveModel {
             id: Set(new_id),
             name: Set(params.name),
-            cidr: Set(params.cidr.to_string()),
+            cidr: Set(params.cidr),
             vlan_id: Set(params.vlan_id),
-            gateway: Set(params.gateway.map(|g| g.to_string())),
-            dns_servers: Set(params
-                .dns_servers
-                .map(|v| v.iter().map(|ip| ip.to_string()).collect())),
+            gateway: Set(gateway),
+            dns_servers: Set(dns_servers),
             description: Set(params.description),
             ..Default::default()
         };
@@ -111,13 +90,21 @@ impl Db {
                 None => return Ok(false),
             };
 
+        let gateway = params.gateway.map(|ip| {
+             IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap()
+        });
+
+        let dns_servers = params.dns_servers.map(|v| {
+            v.into_iter()
+                .map(|ip| IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap())
+                .collect::<Vec<IpNetwork>>()
+        });
+
         network.name = Set(params.name);
-        network.cidr = Set(params.cidr.to_string());
+        network.cidr = Set(params.cidr);
         network.vlan_id = Set(params.vlan_id);
-        network.gateway = Set(params.gateway.map(|g| g.to_string()));
-        network.dns_servers = Set(params
-            .dns_servers
-            .map(|v| v.iter().map(|ip| ip.to_string()).collect()));
+        network.gateway = Set(gateway);
+        network.dns_servers = Set(dns_servers);
         network.description = Set(params.description);
 
         network.update(&self.conn).await?;

@@ -2,6 +2,7 @@ use crate::db::CreateIpParams;
 use crate::handlers::common::{internal_error, json_response, AppResult};
 use crate::models::{AssignIpPayload, IpStatus};
 use crate::AppState;
+use sea_orm::ConnectionTrait;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -106,6 +107,30 @@ pub async fn update_ip(
         .unwrap_or_default()
         .into_iter()
         .find(|ip| ip.id == ip_id);
+
+    // 2b. Conflict check: if IP address is changing, ensure no other record uses it
+    if let (Some(new_ip), Some(ref old_ip)) = (&ip_address, &existing_ip) {
+        if new_ip.to_string() != old_ip.ip_address.to_string() {
+            // Check for conflicts in the same network
+            if old_ip.network_cidr.is_some() {
+                let ip_net = sea_orm::prelude::IpNetwork::new(*new_ip, if new_ip.is_ipv4() { 32 } else { 128 }).unwrap();
+                let conflict_sql = "SELECT COUNT(*) as cnt FROM ip_addresses WHERE network_id = (SELECT id FROM networks WHERE cidr >>= $1::inet LIMIT 1) AND ip_address = $1 AND id != $2";
+                let stmt = sea_orm::Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Postgres,
+                    conflict_sql,
+                    vec![ip_net.into(), ip_id.into()],
+                );
+                if let Ok(Some(row)) = state.db.conn.query_one(stmt).await {
+                    let count: i64 = row.try_get_by_index(0).unwrap_or(0);
+                    if count > 0 {
+                        return Err(crate::handlers::common::AppError::BadRequest(
+                            format!("IP address {} is already assigned in this network", new_ip)
+                        ));
+                    }
+                }
+            }
+        }
+    }
 
     let params = crate::db::UpdateIpParams {
         ip_id,
