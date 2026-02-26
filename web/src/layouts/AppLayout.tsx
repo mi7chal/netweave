@@ -11,7 +11,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <AppSidebar />
             <SidebarInset className="bg-background relative flex flex-col flex-1 overflow-hidden">
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] pointer-events-none" />
-                <div className="absolute inset-0 z-0 bg-[url('https://res.cloudinary.com/dzl9yxixg/image/upload/v1714644063/grid_xomsqv.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-20 pointer-events-none" />
+                <div className="absolute inset-0 z-0 bg-premium-grid [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-40 pointer-events-none" />
 
                 <header className="flex h-14 shrink-0 items-center gap-2 border-b/50 bg-background/80 backdrop-blur-xl px-4 sticky top-0 z-50 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
                     <div className="flex items-center gap-2 px-4">
