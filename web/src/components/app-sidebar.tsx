@@ -5,11 +5,12 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel,
     SidebarHeader,
+    SidebarFooter,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboard, Network, Server, Settings2, Zap } from "lucide-react"
+import { Github, LayoutDashboard, Network, Server, Settings2, Zap } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
@@ -65,6 +66,20 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
+            <SidebarFooter className="p-4 border-t border-border/10">
+                <a
+                    href="https://github.com/mi7chal"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary/5 border border-transparent hover:border-primary/10"
+                >
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Copyright</span>
+                        <span className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">© 2026 mi7chal</span>
+                    </div>
+                    <Github className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:scale-110 transition-all duration-300" />
+                </a>
+            </SidebarFooter>
         </Sidebar>
     )
 }

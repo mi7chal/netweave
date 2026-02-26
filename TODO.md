@@ -6,6 +6,3 @@
 - [ ] Add authentication and authorization with and without OIDC
 - [ ] Add proper settings and configuration
 - [ ] Add secured or unsecured homepage in settings. When user has no admin priviledge, one should not even see sidebar - just homepage.
-- [ ] Table sorting
-- [ ] Dynamic/static ip info in devices table
-- [ ] Separate dynamic ips from static somehow to make management easier
