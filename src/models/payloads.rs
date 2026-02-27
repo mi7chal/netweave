@@ -122,3 +122,79 @@ pub struct CreateInterfacePayload {
     pub mac_address: Option<String>,
     pub interface_type: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_device_payload_minimal() {
+        let json = r#"{"hostname":"server1","device_type":"PHYSICAL"}"#;
+        let payload: CreateDevicePayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.hostname, "server1");
+        assert_eq!(payload.device_type, "PHYSICAL");
+        assert!(payload.parent_device_id.is_none());
+        assert!(payload.mac_address.is_none());
+        assert!(payload.cpu_cores.is_none());
+    }
+
+    #[test]
+    fn create_device_payload_empty_strings_become_none() {
+        let json = r#"{"hostname":"server1","device_type":"VM","mac_address":"","ip_address":"","os_info":"","cpu_cores":"","ram_gb":"","storage_gb":""}"#;
+        let payload: CreateDevicePayload = serde_json::from_str(json).unwrap();
+        assert!(payload.mac_address.is_none());
+        assert!(payload.ip_address.is_none());
+        assert!(payload.os_info.is_none());
+        assert!(payload.cpu_cores.is_none());
+        assert!(payload.ram_gb.is_none());
+        assert!(payload.storage_gb.is_none());
+    }
+
+    #[test]
+    fn assign_ip_checkbox_parsing() {
+        // "on" = true
+        let json = r#"{"network_id":"00000000-0000-0000-0000-000000000001","ip_address":"10.0.0.1","is_static":"on"}"#;
+        let payload: AssignIpPayload = serde_json::from_str(json).unwrap();
+        assert!(payload.is_static);
+
+        // "true" = true
+        let json = r#"{"network_id":"00000000-0000-0000-0000-000000000001","ip_address":"10.0.0.1","is_static":"true"}"#;
+        let payload: AssignIpPayload = serde_json::from_str(json).unwrap();
+        assert!(payload.is_static);
+
+        // "false" = false
+        let json = r#"{"network_id":"00000000-0000-0000-0000-000000000001","ip_address":"10.0.0.1","is_static":"false"}"#;
+        let payload: AssignIpPayload = serde_json::from_str(json).unwrap();
+        assert!(!payload.is_static);
+    }
+
+    #[test]
+    fn create_network_payload_full() {
+        let json = r#"{"name":"LAN","cidr":"10.0.0.0/24","vlan_id":"100","gateway":"10.0.0.1","description":"Main LAN"}"#;
+        let payload: CreateNetworkPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.name, "LAN");
+        assert_eq!(payload.cidr, "10.0.0.0/24");
+        assert_eq!(payload.vlan_id, Some(100));
+        assert_eq!(payload.gateway, Some("10.0.0.1".to_string()));
+        assert_eq!(payload.description, Some("Main LAN".to_string()));
+    }
+
+    #[test]
+    fn create_service_payload_defaults() {
+        let json = r#"{"name":"Plex","base_url":"http://10.0.0.5:32400"}"#;
+        let payload: CreateServicePayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.name, "Plex");
+        assert!(!payload.is_public);
+        assert!(payload.device_id.is_none());
+    }
+
+    #[test]
+    fn create_interface_payload_empty_mac() {
+        let json = r#"{"name":"eth0","mac_address":"","interface_type":"PHYSICAL"}"#;
+        let payload: CreateInterfacePayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.name, "eth0");
+        assert!(payload.mac_address.is_none());
+        assert_eq!(payload.interface_type, "PHYSICAL");
+    }
+}
+

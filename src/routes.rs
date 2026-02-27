@@ -8,21 +8,11 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use tower_http::services::{ServeDir, ServeFile};
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 
 async fn auth_middleware(session: Session, mut request: Request, next: Next) -> Response {
     let user: Option<AuthUser> = session.get(AUTH_SESSION_KEY).await.unwrap_or(None);
-    
-    // DEV MODE BYPASS: If no user, inject a dummy admin for development
-    let user = if user.is_none() && cfg!(debug_assertions) {
-        Some(AuthUser {
-            id: uuid::Uuid::nil(),
-            username: "dev_admin".to_string(),
-            role: "ADMIN".to_string(),
-        })
-    } else {
-        user
-    };
 
     if let Some(user) = user {
         request.extensions_mut().insert(user);
@@ -127,6 +117,11 @@ pub fn create_router(state: AppState) -> Router {
             "/integrations/:id",
             delete(handlers::integrations::delete_integration),
         )
+        // Settings
+        .route(
+            "/settings",
+            get(handlers::settings::get_settings).put(handlers::settings::update_settings),
+        )
         .route_layer(middleware::from_fn(require_admin));
 
     // Combine API routes
@@ -135,12 +130,23 @@ pub fn create_router(state: AppState) -> Router {
         .merge(admin_routes)
         .route_layer(middleware::from_fn(auth_middleware));
 
+    // Public API routes (no auth required)
+    let public_api = Router::new()
+        .route("/settings/public", get(handlers::settings::get_settings));
+
     // Auth Routes (Public)
     let auth_routes = auth::routes(state.clone());
 
+    // Static file serving for frontend SPA (production)
+    let spa_service = ServeDir::new("web/dist")
+        .not_found_service(ServeFile::new("web/dist/index.html"));
+
     Router::new()
         .nest("/api", api_routes)
+        .nest("/api", public_api)
         .nest("/auth", auth_routes)
+        .fallback_service(spa_service)
         .layer(session_layer)
         .with_state(state)
 }
+

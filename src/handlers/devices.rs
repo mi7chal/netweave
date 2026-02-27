@@ -1,12 +1,7 @@
-use super::common::{internal_error, json_response, AppResult};
-use crate::models::{CreateDevicePayload, CreateInterfacePayload};
+use crate::handlers::common::{AppError, AppResult};
+use crate::models::{CreateDevicePayload, CreateInterfacePayload, DeviceDetails, DeviceIpView, DeviceListView, Interface};
 use crate::AppState;
-use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -18,64 +13,39 @@ pub struct SearchParams {
 pub async fn list_devices(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
-) -> AppResult<impl IntoResponse> {
-    let devices = state
-        .db
-        .list_devices(params.q)
-        .await
-        .map_err(internal_error)?;
-
-    json_response(devices)
+) -> AppResult<Json<Vec<DeviceListView>>> {
+    Ok(Json(state.db.list_devices(params.q).await?))
 }
 
 pub async fn create_device(
     State(state): State<AppState>,
     Json(payload): Json<CreateDevicePayload>,
-) -> AppResult<impl IntoResponse> {
-    let device = state
-        .db
-        .create_device(payload)
-        .await
-        .map_err(internal_error)?;
-
-    // In a real API we might return 201 Created with Location header,
-    // for now returning the created object is fine.
-    json_response(device)
+) -> AppResult<Json<Uuid>> {
+    Ok(Json(state.db.create_device(payload).await?))
 }
 
 pub async fn get_device(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> AppResult<impl IntoResponse> {
-    let device = state
-        .db
-        .get_device_details(id)
-        .await
-        .map_err(internal_error)?
-        .ok_or_else(|| crate::handlers::common::AppError::NotFound("Device not found".into()))?;
-
-    json_response(device)
+) -> AppResult<Json<DeviceDetails>> {
+    let device = state.db.get_device_details(id).await?
+        .ok_or(AppError::NotFound("Device not found".into()))?;
+    Ok(Json(device))
 }
 
 pub async fn update_device(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    Json(payload): Json<CreateDevicePayload>, // TODO: Should use UpdateDevicePayload if different
-) -> AppResult<impl IntoResponse> {
-    let device = state
-        .db
-        .update_device(id, payload)
-        .await
-        .map_err(internal_error)?;
-
-    json_response(device)
+    Json(payload): Json<CreateDevicePayload>,
+) -> AppResult<Json<bool>> {
+    Ok(Json(state.db.update_device(id, payload).await?))
 }
 
 pub async fn delete_device(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> AppResult<impl IntoResponse> {
-    state.db.delete_device(id).await.map_err(internal_error)?;
+) -> AppResult<StatusCode> {
+    state.db.delete_device(id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -85,39 +55,23 @@ pub async fn create_interface(
     State(state): State<AppState>,
     Path(device_id): Path<Uuid>,
     Json(payload): Json<CreateInterfacePayload>,
-) -> AppResult<impl IntoResponse> {
-    let iface = state
-        .db
-        .create_interface(device_id, payload)
-        .await
-        .map_err(internal_error)?;
-
-    json_response(iface)
+) -> AppResult<Json<Uuid>> {
+    Ok(Json(state.db.create_interface(device_id, payload).await?))
 }
 
 pub async fn update_interface(
     State(state): State<AppState>,
     Path((_device_id, interface_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<CreateInterfacePayload>,
-) -> AppResult<impl IntoResponse> {
-    let iface = state
-        .db
-        .update_interface(interface_id, payload)
-        .await
-        .map_err(internal_error)?;
-
-    json_response(iface)
+) -> AppResult<Json<Interface>> {
+    Ok(Json(state.db.update_interface(interface_id, payload).await?))
 }
 
 pub async fn delete_interface(
     State(state): State<AppState>,
     Path((_device_id, interface_id)): Path<(Uuid, Uuid)>,
-) -> AppResult<impl IntoResponse> {
-    state
-        .db
-        .delete_interface(interface_id)
-        .await
-        .map_err(internal_error)?;
+) -> AppResult<StatusCode> {
+    state.db.delete_interface(interface_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -126,9 +80,6 @@ pub async fn delete_interface(
 pub async fn list_device_ips(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> AppResult<impl IntoResponse> {
-    let ips = state.db.list_device_ips(id).await.map_err(internal_error)?;
-    json_response(ips)
+) -> AppResult<Json<Vec<DeviceIpView>>> {
+    Ok(Json(state.db.list_device_ips(id).await?))
 }
-
-// Reuse logic from common handlers/ips.rs if possible, or define here

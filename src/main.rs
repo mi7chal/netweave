@@ -21,7 +21,7 @@ async fn main() {
 
     let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     tracing::debug!("Connecting to database...");
-    tracing::trace!("Databas url loaded: {}", db_url);
+    tracing::trace!("Database url loaded: {}", db_url);
 
     // db pool
     let pool = PgPoolOptions::new()
@@ -30,7 +30,6 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
 
-    // OIDC Service
     // OIDC Service
     tracing::debug!("Initializing OIDC Service...");
     let oidc = match netweave::auth::oidc::OidcService::from_env().await {

@@ -33,5 +33,5 @@ logs/
 # misc
 .venv/
 node_modules/
-dist//
+dist/
 build/

@@ -6,6 +6,7 @@ pub mod devices;
 pub mod ips;
 pub mod networks;
 pub mod services;
+pub mod settings;
 pub mod integrations;
 
 // re-expors

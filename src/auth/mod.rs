@@ -87,9 +87,35 @@ pub async fn login_username_password(
         .into_response()
 }
 
-pub async fn oidc_login(State(state): State<AppState>) -> impl IntoResponse {
+pub async fn me_handler(session: Session) -> impl IntoResponse {
+    let user: Option<AuthUser> = session.get(AUTH_SESSION_KEY).await.unwrap_or(None);
+    match user {
+        Some(user) => axum::Json(serde_json::json!({
+            "id": user.id,
+            "username": user.username,
+            "role": user.role
+        })).into_response(),
+        None => (axum::http::StatusCode::UNAUTHORIZED, 
+            axum::Json(serde_json::json!({"error": "Not authenticated"}))
+        ).into_response(),
+    }
+}
+
+pub async fn check_oidc_handler(State(state): State<AppState>) -> impl IntoResponse {
+    axum::Json(serde_json::json!({
+        "oidc_enabled": state.oidc.is_some()
+    }))
+}
+
+const OIDC_NONCE_KEY: &str = "oidc_nonce";
+const OIDC_CSRF_KEY: &str = "oidc_csrf";
+
+pub async fn oidc_login(State(state): State<AppState>, session: Session) -> impl IntoResponse {
     if let Some(oidc) = &state.oidc {
-        let (auth_url, _csrf_token, _nonce) = oidc.get_authorization_url();
+        let (auth_url, csrf_token, nonce) = oidc.authorization_url();
+        // Store nonce and CSRF token in session for verification during callback
+        let _ = session.insert(OIDC_NONCE_KEY, nonce.secret().clone()).await;
+        let _ = session.insert(OIDC_CSRF_KEY, csrf_token.secret().clone()).await;
         Redirect::to(auth_url.as_str()).into_response()
     } else {
         (
@@ -103,7 +129,7 @@ pub async fn oidc_login(State(state): State<AppState>) -> impl IntoResponse {
 #[derive(Deserialize)]
 pub struct AuthCallbackParams {
     code: String,
-    _state: String, // CSRF token usually
+    state: String,
 }
 
 pub async fn oidc_callback(
@@ -122,10 +148,27 @@ pub async fn oidc_callback(
         }
     };
 
-    let (claims, _id_token) = match oidc.exchange_code(params.code).await {
+    // Verify CSRF state token
+    let stored_csrf: Option<String> = session.get(OIDC_CSRF_KEY).await.unwrap_or(None);
+    if stored_csrf.as_deref() != Some(&params.state) {
+        return (axum::http::StatusCode::BAD_REQUEST, "Invalid CSRF state token").into_response();
+    }
+
+    // Retrieve stored nonce for verification
+    let stored_nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap_or(None);
+    let nonce = match stored_nonce {
+        Some(n) => openidconnect::Nonce::new(n),
+        None => return (axum::http::StatusCode::BAD_REQUEST, "Missing OIDC nonce in session").into_response(),
+    };
+
+    let (claims, _id_token) = match oidc.exchange_code(params.code, &nonce).await {
         Ok(res) => res,
         Err(e) => return format!("Failed to exchange code: {}", e).into_response(),
     };
+
+    // Clean up OIDC session keys
+    let _ = session.remove::<String>(OIDC_NONCE_KEY).await;
+    let _ = session.remove::<String>(OIDC_CSRF_KEY).await;
 
     let email = claims.email().map(|e| e.to_string()).unwrap_or_default();
     let preferred_username = claims
@@ -190,6 +233,8 @@ pub async fn logout_handler(session: Session) -> impl IntoResponse {
 
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
+        .route("/me", get(me_handler))
+        .route("/check-oidc", get(check_oidc_handler))
         .route("/login", get(oidc_login).post(login_username_password))
         .route("/callback", get(oidc_callback))
         .route("/logout", get(logout_handler))

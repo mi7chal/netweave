@@ -1,14 +1,9 @@
 use crate::db::CreateIpParams;
-use crate::handlers::common::{internal_error, json_response, AppResult};
+use crate::handlers::common::{AppError, AppResult};
 use crate::models::{AssignIpPayload, IpStatus};
 use crate::AppState;
 use sea_orm::ConnectionTrait;
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::{Path, State}, http::StatusCode, Json};
 use std::net::IpAddr;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -17,15 +12,11 @@ pub async fn assign_ip(
     State(state): State<AppState>,
     Path(device_id): Path<Uuid>,
     Json(payload): Json<AssignIpPayload>,
-) -> AppResult<impl IntoResponse> {
-    // Basic validation
-    let ip_address = IpAddr::from_str(&payload.ip_address).map_err(|_| {
-        crate::handlers::common::AppError::BadRequest("Invalid IP address".into())
-    })?;
+) -> AppResult<Json<Uuid>> {
+    let ip_address = IpAddr::from_str(&payload.ip_address)
+        .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
 
-    let mac_address = payload
-        .mac_address
-        .as_ref()
+    let mac_address = payload.mac_address.as_ref()
         .filter(|m| !m.is_empty())
         .and_then(|m| mac_address::MacAddress::from_str(m).ok());
 
@@ -42,36 +33,36 @@ pub async fn assign_ip(
         mac_address,
         is_static: payload.is_static,
         status,
-        description: None, // Future: Add description field to AssignIpPayload
+        description: None,
     };
 
-    let is_static_assignment = payload.is_static;
-    let ip_string = ip_address.to_string();
-    let mac_string = mac_address.map(|m| m.to_string());
-    
-    let ip = state.db.create_ip(params).await.map_err(internal_error)?;
+    let is_static = payload.is_static;
+    let ip_str = ip_address.to_string();
+    let mac_str = mac_address.map(|m| m.to_string());
 
-    if is_static_assignment {
-        if let Some(mac) = mac_string {
-            // Get hostname for the integration
+    let ip = state.db.create_ip(params).await?;
+
+    // Sync static lease to integrations
+    if is_static {
+        if let Some(mac) = mac_str {
             if let Ok(Some(device)) = state.db.get_device_details(device_id).await {
-                let state_clone = state.clone();
+                let s = state.clone();
                 let hostname = device.device.hostname;
                 tokio::spawn(async move {
-                    crate::integrations::trigger_static_lease_push(&state_clone, &mac, &ip_string, &hostname).await;
+                    crate::integrations::trigger_static_lease_push(&s, &mac, &ip_str, &hostname).await;
                 });
             }
         }
     }
 
-    json_response(ip)
+    Ok(Json(ip))
 }
 
 pub async fn delete_ip_assignment(
     State(state): State<AppState>,
     Path((_device_id, ip_id)): Path<(Uuid, Uuid)>,
-) -> AppResult<impl IntoResponse> {
-    state.db.delete_ip(ip_id).await.map_err(internal_error)?;
+) -> AppResult<StatusCode> {
+    state.db.delete_ip(ip_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -79,21 +70,14 @@ pub async fn update_ip(
     State(state): State<AppState>,
     Path((device_id, ip_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<crate::models::UpdateIpPayload>,
-) -> AppResult<impl IntoResponse> {
-    // 1. Validate fields if present
-    let ip_address = match &payload.ip_address {
-        Some(ip_str) => Some(IpAddr::from_str(ip_str).map_err(|_| {
-            crate::handlers::common::AppError::BadRequest("Invalid IP address".into())
-        })?),
-        None => None,
-    };
+) -> AppResult<Json<crate::entities::ip_addresses::Model>> {
+    let ip_address = payload.ip_address.as_ref()
+        .map(|s| IpAddr::from_str(s))
+        .transpose()
+        .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
 
     let mac_address = payload.mac_address.as_ref().map(|m| {
-        if m.is_empty() {
-            None
-        } else {
-            mac_address::MacAddress::from_str(m).ok()
-        }
+        if m.is_empty() { None } else { mac_address::MacAddress::from_str(m).ok() }
     });
 
     let status = payload.status.as_deref().map(|s| match s {
@@ -102,30 +86,26 @@ pub async fn update_ip(
         _ => IpStatus::Active,
     });
 
-    // 2. Fetch the existing IP to compare state before update
+    // Fetch existing for integration sync comparison
     let existing_ip = state.db.list_device_ips(device_id).await
         .unwrap_or_default()
         .into_iter()
         .find(|ip| ip.id == ip_id);
 
-    // 2b. Conflict check: if IP address is changing, ensure no other record uses it
+    // Conflict check
     if let (Some(new_ip), Some(ref old_ip)) = (&ip_address, &existing_ip) {
         if new_ip.to_string() != old_ip.ip_address.to_string() {
-            // Check for conflicts in the same network
             if old_ip.network_cidr.is_some() {
                 let ip_net = sea_orm::prelude::IpNetwork::new(*new_ip, if new_ip.is_ipv4() { 32 } else { 128 }).unwrap();
-                let conflict_sql = "SELECT COUNT(*) as cnt FROM ip_addresses WHERE network_id = (SELECT id FROM networks WHERE cidr >>= $1::inet LIMIT 1) AND ip_address = $1 AND id != $2";
                 let stmt = sea_orm::Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Postgres,
-                    conflict_sql,
+                    "SELECT COUNT(*) FROM ip_addresses WHERE network_id = (SELECT id FROM networks WHERE cidr >>= $1::inet LIMIT 1) AND ip_address = $1 AND id != $2",
                     vec![ip_net.into(), ip_id.into()],
                 );
                 if let Ok(Some(row)) = state.db.conn.query_one(stmt).await {
                     let count: i64 = row.try_get_by_index(0).unwrap_or(0);
                     if count > 0 {
-                        return Err(crate::handlers::common::AppError::BadRequest(
-                            format!("IP address {} is already assigned in this network", new_ip)
-                        ));
+                        return Err(AppError::BadRequest(format!("IP address {} is already assigned", new_ip)));
                     }
                 }
             }
@@ -141,59 +121,46 @@ pub async fn update_ip(
         description: payload.description.clone().map(Some),
     };
 
-    // 3. Update the IP in DB
-    let updated_ip = state.db.update_ip(params).await.map_err(internal_error)?;
+    let updated = state.db.update_ip(params).await?;
 
-    // 4. Handle integrations sync based on is_static transitions
+    // Handle integration sync for static lease transitions
     if let Some(old_ip) = existing_ip {
         let new_is_static = payload.is_static.unwrap_or(old_ip.is_static.unwrap_or(false));
-        
-        let target_ip_str = ip_address.map(|ip| ip.to_string()).unwrap_or(old_ip.ip_address.to_string());
-        
-        let existing_mac_str = old_ip.mac_address.map(|m| m.to_string());
-        
-        // Use MAC from payload if provided (even if clearing it), otherwise fall back to old MAC
-        let target_mac_str = match &payload.mac_address {
+        let target_ip = ip_address.map(|ip| ip.to_string()).unwrap_or(old_ip.ip_address.to_string());
+        let old_mac = old_ip.mac_address.map(|m| m.to_string());
+        let target_mac = match &payload.mac_address {
             Some(m) => if m.is_empty() { None } else { Some(m.clone()) },
-            None => existing_mac_str.clone(),
+            None => old_mac.clone(),
         };
 
-        if let Some(mac_str) = target_mac_str.as_ref().or(existing_mac_str.as_ref()) {
+        if let Some(mac) = target_mac.as_ref().or(old_mac.as_ref()) {
             if let Ok(Some(device)) = state.db.get_device_details(device_id).await {
-                let state_clone = state.clone();
+                let s = state.clone();
                 let hostname = device.device.hostname;
-                let mac_str_clone = mac_str.clone();
+                let mac = mac.clone();
+                let old_was_static = old_ip.is_static.unwrap_or(false);
+                let old_mac_c = old_mac.clone();
+                let old_ip_str = old_ip.ip_address.to_string();
+                let target_ip_c = target_ip.clone();
+                let hostname_c = hostname.clone();
 
-                if new_is_static && !old_ip.is_static.unwrap_or(false) {
-                    // Transitioning to static
-                    tokio::spawn(async move {
-                        crate::integrations::trigger_static_lease_push(&state_clone, &mac_str_clone, &target_ip_str, &hostname).await;
-                    });
-                } else if !new_is_static && old_ip.is_static.unwrap_or(false) {
-                    // Transitioning to dynamic
-                    tokio::spawn(async move {
-                        crate::integrations::trigger_static_lease_delete(&state_clone, &mac_str_clone, &target_ip_str, &hostname).await;
-                    });
-                } else if new_is_static && old_ip.is_static.unwrap_or(false) {
-                    // Updating an already static lease (MAC, IP, or Name could have changed). 
-                    // Delete old mapping if IP or MAC changed.
-                    let target_ip_str_clone = target_ip_str.clone();
-                    let hostname_clone = hostname.clone();
-                    let existing_mac_str_clone = existing_mac_str.clone();
-                    let old_ip_address_clone = old_ip.ip_address.to_string();
-                    tokio::spawn(async move {
-                        // If MAC or IP actually changed, release old first
-                        if let Some(old_mac) = existing_mac_str_clone {
-                             if old_mac != mac_str_clone || old_ip_address_clone != target_ip_str_clone {
-                                crate::integrations::trigger_static_lease_delete(&state_clone, &old_mac, &old_ip_address_clone, &hostname_clone).await;
-                             }
+                tokio::spawn(async move {
+                    if new_is_static && !old_was_static {
+                        crate::integrations::trigger_static_lease_push(&s, &mac, &target_ip_c, &hostname_c).await;
+                    } else if !new_is_static && old_was_static {
+                        crate::integrations::trigger_static_lease_delete(&s, &mac, &target_ip_c, &hostname_c).await;
+                    } else if new_is_static && old_was_static {
+                        if let Some(ref om) = old_mac_c {
+                            if *om != mac || old_ip_str != target_ip_c {
+                                crate::integrations::trigger_static_lease_delete(&s, om, &old_ip_str, &hostname_c).await;
+                            }
                         }
-                        crate::integrations::trigger_static_lease_push(&state_clone, &mac_str_clone, &target_ip_str_clone, &hostname_clone).await;
-                    });
-                }
+                        crate::integrations::trigger_static_lease_push(&s, &mac, &target_ip_c, &hostname_c).await;
+                    }
+                });
             }
         }
     }
 
-    json_response(updated_ip)
+    Ok(Json(updated))
 }

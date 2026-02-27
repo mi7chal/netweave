@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 
 CREATE TABLE IF NOT EXISTS users (
-    -- No default value for uuid beacuse UUID v7 is used (postgres uses v4)
+    -- No default value for uuid because UUID v7 is used (postgres uses v4)
     id UUID PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL ,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -209,12 +209,12 @@ DECLARE
 BEGIN
     IF (TG_OP = 'DELETE') THEN
         audit_action := 'DELETE';
-        -- we need onlty the old state
+        -- we need only the old state
         audit_data := jsonb_build_object('old', row_to_json(OLD));
         target_uuid := OLD.id;
     ELSIF (TG_OP = 'UPDATE') THEN
         audit_action := 'UPDATE';
-        -- we nned both old and new states
+        -- we need both old and new states
         audit_data := jsonb_build_object('old', row_to_json(OLD), 'new', row_to_json(NEW));
         target_uuid := NEW.id;
     ELSIF (TG_OP = 'INSERT') THEN
@@ -292,3 +292,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_target_table ON audit_logs(target_tabl
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- App settings (key-value config store)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO app_settings (key, value) VALUES ('homepage_public', 'false')
+ON CONFLICT (key) DO NOTHING;
+

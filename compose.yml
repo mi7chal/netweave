@@ -1,4 +1,21 @@
 services:
+  app:
+    image: mi7chal/netweave:latest
+    build: .
+    container_name: netweave_app
+    environment:
+      DATABASE_URL: "postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}"
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
+      RUST_LOG: ${RUST_LOG:-info}
+      PORT: 8789
+    ports:
+      - "8789:8789"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: postgres:16-alpine
     container_name: netweave_db
@@ -7,22 +24,27 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
     ports:
-      - "${DATABASE_PORT}:5432"
+      - "${DATABASE_PORT:-5432}:5432"
     volumes:
       - ./db_data:/var/lib/postgresql/data
-
-      # Comment this line in order to disable initial schema setup
+      # Comment this line to disable initial schema setup
       - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # Only for dev
+  # Dev-only tools
   pgweb:
     image: sosedoff/pgweb
     container_name: netweave_pgweb
+    profiles: [ "dev" ]
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=disable
+      DATABASE_URL: postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}?sslmode=disable
     depends_on:
       - db
     restart: unless-stopped

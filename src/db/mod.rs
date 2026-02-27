@@ -11,6 +11,7 @@ pub mod interfaces;
 pub mod ips;
 pub mod networks;
 pub mod services;
+pub mod settings;
 pub mod users;
 
 pub struct CreateNetworkParams {

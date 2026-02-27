@@ -2,26 +2,58 @@
 
 **The Lightweight, Modern IPAM & HomeLab Dashboard.**
 
-Built for lighweight and convinient network administration. Netweave is built in Rust and React, it is extremely fast and fulfills all the needs of a modern IPAM and HomeLab dashboard.
-
-
-<!-- Todo finish this file -->
+Built for lightweight and convenient network administration. NetWeave is based on Rust and React — extremely fast, fulfilling all the needs of a modern IPAM and HomeLab dashboard.
 
 ---
 
 ## ✨ Features
 
 - 🔌 **Dynamic IPAM**: Comprehensive IP Address Management with support for static and dynamic leases.
-- 🖥️ **Device Management**: Track all your hardware with MAC address mapping and primary IP identification.
+- 🖥️ **Device Management**: Track all your hardware with MAC address mapping and IP identification.
 - 📡 **AdGuard Integration**: Native sync with AdGuard Home for managing DHCP leases and static assignments.
 - 🛠️ **Service Monitoring**: Keep an eye on your local services with real-time status checks.
-- 💎 **Premium UI/UX**: A modern, responsive dashboard built with **React**, **Tailwind**, and **Framer Motion**.
-- 🔐 **Secure & Fast**: Powered by **Rust** (Axum) for memory safety and high-concurrency performance.
+- 🔐 **Authentication**: Username/password and OIDC SSO support with role-based access control.
+- ⚙️ **Settings**: Configurable public homepage and application preferences.
+- 🚀 **Secure & Fast**: Powered by **Rust** (Axum) for memory safety and high-concurrency performance.
 
 ---
 
 ## 🚀 Quick Start
-Todo prepare docker image and describe how to run.
+
+### Docker Compose (Recommended)
+
+```yaml
+services:
+  netweave:
+    image: mi7chal/netweave:latest
+    container_name: netweave
+    environment:
+      # You need to provide a valid PostgreSQL connection data
+      DATABASE_URL: "postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}"
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      - "5123:5123"
+      - "8789:8789"
+    restart: unless-stopped
+
+```
+
+---
+
+## ⚙️ Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | *required* |
+| `DEFAULT_ADMIN_USER` | Initial admin username | `admin` |
+| `DEFAULT_ADMIN_PASSWORD` | Initial admin password | `adminpassword` |
+| `RUST_LOG` | Log level (`debug`, `info`, `warn`) | `info` |
+| `OIDC_ISSUER` | OIDC provider URL | *optional* |
+| `OIDC_CLIENT_ID` | OIDC client ID | *optional* |
+| `OIDC_CLIENT_SECRET` | OIDC client secret | *optional* |
+| `OIDC_REDIRECT_URL` | OIDC callback URL | *optional* |
 
 ---
 
@@ -41,10 +73,8 @@ Todo prepare docker image and describe how to run.
 
 ## 🤝 Contributing
 
-NetWeave welcomes all contributions! Just create issue or pull request.
----
+NetWeave welcomes all contributions! In order to contribute, please open an issue or a pull request.
 
 ---
 
 © 2026 [mi7chal](https://github.com/mi7chal). Distributed under the Apache License 2.0.
-

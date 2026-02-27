@@ -116,3 +116,82 @@ impl fmt::Display for IpStatus {
         write!(f, "{:?}", self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn device_type_from_str_known_variants() {
+        assert_eq!(DeviceType::from("PHYSICAL"), DeviceType::Physical);
+        assert_eq!(DeviceType::from("VM"), DeviceType::Vm);
+        assert_eq!(DeviceType::from("LXC"), DeviceType::Lxc);
+        assert_eq!(DeviceType::from("CONTAINER"), DeviceType::Container);
+        assert_eq!(DeviceType::from("SWITCH"), DeviceType::Switch);
+        assert_eq!(DeviceType::from("AP"), DeviceType::Ap);
+        assert_eq!(DeviceType::from("ROUTER"), DeviceType::Router);
+    }
+
+    #[test]
+    fn device_type_unknown_falls_back_to_other() {
+        assert_eq!(DeviceType::from("UNKNOWN"), DeviceType::Other);
+        assert_eq!(DeviceType::from(""), DeviceType::Other);
+        assert_eq!(DeviceType::from("random"), DeviceType::Other);
+    }
+
+    #[test]
+    fn device_type_default_is_other() {
+        assert_eq!(DeviceType::default(), DeviceType::Other);
+    }
+
+    #[test]
+    fn device_type_display() {
+        assert_eq!(DeviceType::Physical.to_string(), "Physical");
+        assert_eq!(DeviceType::Router.to_string(), "Router");
+    }
+
+    #[test]
+    fn device_type_serde_roundtrip() {
+        let dt = DeviceType::Physical;
+        let json = serde_json::to_string(&dt).unwrap();
+        let parsed: DeviceType = serde_json::from_str(&json).unwrap();
+        assert_eq!(dt, parsed);
+    }
+
+    #[test]
+    fn ip_status_default_is_active() {
+        assert_eq!(IpStatus::default(), IpStatus::Active);
+    }
+
+    #[test]
+    fn ip_status_display() {
+        assert_eq!(IpStatus::Active.to_string(), "Active");
+        assert_eq!(IpStatus::Dhcp.to_string(), "Dhcp");
+        assert_eq!(IpStatus::Free.to_string(), "Free");
+    }
+
+    #[test]
+    fn ip_status_serde_roundtrip() {
+        for status in [IpStatus::Active, IpStatus::Reserved, IpStatus::Dhcp, IpStatus::Deprecated, IpStatus::Free] {
+            let json = serde_json::to_string(&status).unwrap();
+            let parsed: IpStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, parsed);
+        }
+    }
+
+    #[test]
+    fn mac_address_display() {
+        let mac = MacAddress(mac_address::MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]));
+        let s = mac.to_string().to_uppercase();
+        assert!(s.contains("AA"));
+    }
+
+    #[test]
+    fn mac_address_serde_roundtrip() {
+        let mac = MacAddress(mac_address::MacAddress::new([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));
+        let json = serde_json::to_string(&mac).unwrap();
+        let parsed: MacAddress = serde_json::from_str(&json).unwrap();
+        assert_eq!(mac, parsed);
+    }
+}
+

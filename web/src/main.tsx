@@ -4,6 +4,7 @@ import App from './App'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 import { ErrorProvider, useError } from './contexts/ErrorContext'
+import { AuthProvider } from './contexts/AuthContext'
 import { setOnBackendDown } from './lib/api-client'
 import { NetworkErrorPage } from './components/NetworkErrorPage'
 import { Toaster } from "@/components/ui/sonner"
@@ -11,23 +12,18 @@ import { Toaster } from "@/components/ui/sonner"
 const Main = () => {
   const { isBackendDown, setBackendDown } = useError();
 
-  // Initialize global error handler synchronously to catch early errors
   useState(() => {
-    console.log("[Main] Registering onBackendDown handler");
-    setOnBackendDown(() => {
-      console.log("[Main] Backend down handler triggered!");
-      setBackendDown(true);
-    });
+    setOnBackendDown(() => setBackendDown(true));
   });
 
-  if (isBackendDown) {
-    return <NetworkErrorPage />;
-  }
+  if (isBackendDown) return <NetworkErrorPage />;
 
   return (
     <>
       <BrowserRouter>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </BrowserRouter>
       <Toaster />
     </>
