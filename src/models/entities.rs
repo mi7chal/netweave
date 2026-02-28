@@ -78,6 +78,15 @@ pub struct DashboardService {
     pub device_id: Option<Uuid>,
 }
 
+/// Dashboard/service list item with live status and uptime (unifies dashboard and services handlers).
+#[derive(Debug, Clone, Serialize)]
+pub struct ServiceWithStatus {
+    #[serde(flatten)]
+    pub service: DashboardService,
+    pub status: String,
+    pub uptime_percentage: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct DeviceIpView {
     pub id: Uuid, // Interface ID

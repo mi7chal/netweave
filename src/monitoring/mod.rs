@@ -9,7 +9,7 @@ pub async fn start_monitoring(state: AppState) {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
-        .expect("Failed to build reqwest client");
+        .expect("Failed to build monitoring HTTP client");
 
     loop {
         tracing::debug!("Running service health checks...");
@@ -27,28 +27,31 @@ async fn check_all_services(state: &AppState, client: &reqwest::Client) -> anyho
         let url = service.base_url;
 
         let (status, is_success) = match client.get(&url).send().await {
-            Ok(res) => {
-                if res.status().is_success() {
-                    (ServiceStatus::Up, true)
-                } else {
-                    (ServiceStatus::Down, false)
-                }
-            }
+            Ok(res) if res.status().is_success() => (ServiceStatus::Up, true),
+            Ok(_) => (ServiceStatus::Down, false),
             Err(_) => (ServiceStatus::Down, false),
         };
 
-        // Update status in shared state
-        if let Ok(mut statuses) = state.service_statuses.write() {
-            statuses.insert(service.id, status);
-        }
+        state
+            .service_statuses
+            .write()
+            .await
+            .insert(service.id, status);
 
-        // Increment checks in DB using parameterized query
         let success_inc: i32 = if is_success { 1 } else { 0 };
-        let _ = state.db.conn.execute(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "UPDATE services SET total_checks = COALESCE(total_checks, 0) + 1, successful_checks = COALESCE(successful_checks, 0) + $1 WHERE id = $2",
-            [success_inc.into(), service.id.to_string().into()],
-        )).await;
+        if let Err(e) = state
+            .db
+            .conn
+            .execute(Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                "UPDATE services SET total_checks = COALESCE(total_checks, 0) + 1, \
+                 successful_checks = COALESCE(successful_checks, 0) + $1 WHERE id = $2",
+                [success_inc.into(), service.id.to_string().into()],
+            ))
+            .await
+        {
+            tracing::warn!("Failed to update service check counters: {}", e);
+        }
     }
     Ok(())
 }

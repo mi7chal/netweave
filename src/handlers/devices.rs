@@ -1,7 +1,15 @@
 use crate::handlers::common::{AppError, AppResult};
-use crate::models::{CreateDevicePayload, CreateInterfacePayload, DeviceDetails, DeviceIpView, DeviceListView, Interface};
+use crate::models::{
+    CreateDevicePayload, CreateInterfacePayload, DeviceDetails, DeviceIpView, DeviceListView,
+    Interface,
+};
+use crate::utils::validation;
 use crate::AppState;
-use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    Json,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -21,6 +29,7 @@ pub async fn create_device(
     State(state): State<AppState>,
     Json(payload): Json<CreateDevicePayload>,
 ) -> AppResult<Json<Uuid>> {
+    validation::validate_hostname(&payload.hostname).map_err(AppError::BadRequest)?;
     Ok(Json(state.db.create_device(payload).await?))
 }
 
@@ -28,7 +37,10 @@ pub async fn get_device(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<DeviceDetails>> {
-    let device = state.db.get_device_details(id).await?
+    let device = state
+        .db
+        .get_device_details(id)
+        .await?
         .ok_or(AppError::NotFound("Device not found".into()))?;
     Ok(Json(device))
 }
@@ -38,6 +50,7 @@ pub async fn update_device(
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateDevicePayload>,
 ) -> AppResult<Json<bool>> {
+    validation::validate_hostname(&payload.hostname).map_err(AppError::BadRequest)?;
     Ok(Json(state.db.update_device(id, payload).await?))
 }
 
@@ -56,6 +69,8 @@ pub async fn create_interface(
     Path(device_id): Path<Uuid>,
     Json(payload): Json<CreateInterfacePayload>,
 ) -> AppResult<Json<Uuid>> {
+    validation::validate_name(&payload.name, "Interface name", 50)
+        .map_err(AppError::BadRequest)?;
     Ok(Json(state.db.create_interface(device_id, payload).await?))
 }
 
@@ -64,6 +79,8 @@ pub async fn update_interface(
     Path((_device_id, interface_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<CreateInterfacePayload>,
 ) -> AppResult<Json<Interface>> {
+    validation::validate_name(&payload.name, "Interface name", 50)
+        .map_err(AppError::BadRequest)?;
     Ok(Json(state.db.update_interface(interface_id, payload).await?))
 }
 

@@ -1,38 +1,19 @@
-use crate::handlers::common::{AppError, AppResult};
-use crate::models::{CreateServicePayload, DashboardService};
-use crate::{AppState, ServiceStatus};
-use axum::{extract::{Path, State}, http::StatusCode, Json};
+use crate::handlers::common::{AppError, AppResult, ServiceWithStatus, enrich_services_with_status};
+use crate::models::CreateServicePayload;
+use crate::utils::validation;
+use crate::AppState;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use uuid::Uuid;
 
-#[derive(serde::Serialize)]
-pub struct ServiceResponse {
-    #[serde(flatten)]
-    pub service: DashboardService,
-    pub status: String,
-    pub uptime_percentage: f64,
-}
-
-pub async fn list_services(State(state): State<AppState>) -> AppResult<Json<Vec<ServiceResponse>>> {
+pub async fn list_services(
+    State(state): State<AppState>,
+) -> AppResult<Json<Vec<ServiceWithStatus>>> {
     let services = state.db.list_dashboard_services().await?;
-    let statuses = state.service_statuses.read().unwrap();
-
-    let response = services
-        .into_iter()
-        .map(|s| {
-            let status = statuses.get(&s.id).cloned().unwrap_or(ServiceStatus::Unknown);
-            let uptime_percentage = if s.total_checks > 0 {
-                (s.successful_checks as f64 / s.total_checks as f64) * 100.0
-            } else {
-                100.0
-            };
-            ServiceResponse {
-                service: s,
-                status: format!("{:?}", status).to_uppercase(),
-                uptime_percentage,
-            }
-        })
-        .collect();
-
+    let response = enrich_services_with_status(&state, services).await;
     Ok(Json(response))
 }
 
@@ -40,6 +21,9 @@ pub async fn create_service(
     State(state): State<AppState>,
     Json(payload): Json<CreateServicePayload>,
 ) -> AppResult<Json<Uuid>> {
+    validation::validate_name(&payload.name, "Service name", 100)
+        .map_err(AppError::BadRequest)?;
+    validation::validate_url(&payload.base_url).map_err(AppError::BadRequest)?;
     Ok(Json(state.db.create_service(payload).await?))
 }
 
@@ -47,7 +31,10 @@ pub async fn get_service(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<crate::models::Service>> {
-    let service = state.db.get_service(id).await?
+    let service = state
+        .db
+        .get_service(id)
+        .await?
         .ok_or(AppError::NotFound("Service not found".into()))?;
     Ok(Json(service))
 }
@@ -57,6 +44,9 @@ pub async fn update_service(
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateServicePayload>,
 ) -> AppResult<Json<bool>> {
+    validation::validate_name(&payload.name, "Service name", 100)
+        .map_err(AppError::BadRequest)?;
+    validation::validate_url(&payload.base_url).map_err(AppError::BadRequest)?;
     Ok(Json(state.db.update_service(id, payload).await?))
 }
 

@@ -7,6 +7,7 @@ use sqlx::types::ipnetwork::IpNetwork;
 use uuid::Uuid;
 
 pub mod devices;
+pub mod helpers;
 pub mod interfaces;
 pub mod ips;
 pub mod networks;
@@ -44,21 +45,20 @@ pub struct UpdateIpParams {
     pub description: Option<Option<String>>,
 }
 
-/// Database connection wrapper
-///
-/// It holds pool and basically is created just to implement methods inside specific files.
-///
-/// It serves as a repository pattern to organize database operations.
+/// Database connection wrapper providing a repository pattern for all DB operations.
+/// Holds both the SeaORM connection (for ORM queries) and the raw SQLx pool
+/// (for migrations, session store, and queries requiring Postgres-specific casts).
 use sea_orm::{DatabaseConnection, SqlxPostgresConnector};
 
 #[derive(Clone)]
 pub struct Db {
     pub conn: DatabaseConnection,
+    pub pool: PgPool,
 }
 
 impl Db {
     pub fn new(pool: PgPool) -> Self {
-        let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
-        Self { conn }
+        let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone());
+        Self { conn, pool }
     }
 }

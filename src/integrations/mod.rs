@@ -1,16 +1,17 @@
+use crate::entities::{devices, integrations, interfaces, ip_addresses};
 use crate::AppState;
-use crate::entities::{integrations, devices, interfaces, ip_addresses};
-use crate::models::CreateServicePayload;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, ColumnTrait, QueryFilter, QuerySelect, Statement, DatabaseBackend, ConnectionTrait};
-use tokio::time::{sleep, Duration};
-use chrono::Utc;
-use async_trait::async_trait;
 use anyhow::Result;
-use sea_orm::sea_query::{Expr, Alias};
+use async_trait::async_trait;
+use chrono::Utc;
+use sea_orm::sea_query::{Alias, Expr};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, QueryFilter,
+    QuerySelect, Set, Statement,
+};
+use tokio::time::{sleep, Duration};
 
 pub mod adguard;
 
-/// Represents the type of source integration
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntegrationType {
     AdGuardHome,
@@ -40,12 +41,16 @@ pub trait IntegrationProvider: Send + Sync {
     fn provider_id(&self) -> &str;
     fn integration_type(&self) -> IntegrationType;
     async fn health_check(&self) -> Result<()>;
-    async fn fetch_services(&self) -> Result<Vec<CreateServicePayload>>;
+    async fn fetch_services(&self) -> Result<Vec<crate::models::CreateServicePayload>>;
     async fn fetch_networks(&self) -> Result<Vec<IntegrationNetwork>>;
     async fn fetch_devices(&self) -> Result<Vec<IntegrationDhcpLease>>;
     async fn push_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()>;
     async fn delete_static_lease(&self, mac: &str, ip: &str, hostname: &str) -> Result<()>;
 }
+
+// ---------------------------------------------------------------------------
+// Background sync task
+// ---------------------------------------------------------------------------
 
 pub async fn run_sync_task(state: AppState) {
     tracing::info!("Starting integration sync task...");
@@ -58,257 +63,356 @@ pub async fn run_sync_task(state: AppState) {
 }
 
 async fn sync_all_integrations(state: &AppState) -> Result<()> {
-    let integrations = integrations::Entity::find().all(&state.conn).await?;
+    let all = integrations::Entity::find()
+        .all(&state.db.conn)
+        .await?;
 
-    for integration_model in integrations {
-        // Update status to SYNCING
-        let mut active: integrations::ActiveModel = integration_model.clone().into();
-        active.status = Set(Some("SYNCING".to_string()));
-        active.update(&state.conn).await.ok();
+    for model in all {
+        set_integration_status(state, &model, "SYNCING").await;
 
-        match process_integration(state, &integration_model).await {
+        match process_integration(state, &model).await {
             Ok(_) => {
-                let mut active: integrations::ActiveModel = integration_model.into();
+                let mut active: integrations::ActiveModel = model.into();
                 active.status = Set(Some("ACTIVE".to_string()));
                 active.last_sync_at = Set(Some(Utc::now().into()));
-                active.update(&state.conn).await?;
+                if let Err(e) = active.update(&state.db.conn).await {
+                    tracing::error!("Failed to update integration status: {}", e);
+                }
             }
             Err(e) => {
-                tracing::error!("Failed to sync integration {}: {}", integration_model.name, e);
-                let mut active: integrations::ActiveModel = integration_model.into();
-                let err_msg = format!("ERROR: {}", e);
-                // Truncate if too long (status is likely VARCHAR(255) typically)
-                active.status = Set(Some(err_msg.chars().take(250).collect()));
-                active.update(&state.conn).await.ok();
+                tracing::error!("Failed to sync integration {}: {}", model.name, e);
+                let err_msg: String = format!("ERROR: {}", e)
+                    .chars()
+                    .take(250)
+                    .collect();
+                set_integration_status(state, &model, &err_msg).await;
             }
         }
     }
     Ok(())
 }
 
-pub async fn process_integration(state: &AppState, model: &integrations::Model) -> Result<()> {
-    // Factory: Create provider instance based on type
-    let provider: Box<dyn IntegrationProvider> = match model.provider_type.as_str() {
-        "AdGuardHome" => Box::new(adguard::AdGuardIntegration::new(&model.config)?),
-        _ => return Err(anyhow::anyhow!("Unknown provider type: {}", model.provider_type)),
-    };
+// ---------------------------------------------------------------------------
+// Provider factory
+// ---------------------------------------------------------------------------
 
-    // 1. Sync Services (DNS Rewrites) - Removed as per user request (logic kept as no-op in adguard)
-    let _ = provider.fetch_services().await?; 
-    
-    // 2. Sync Networks
-    let fetched_networks = provider.fetch_networks().await?;
-    tracing::info!("Integration {} returned {} networks", model.name, fetched_networks.len());
-    let mut all_networks = state.db.list_networks().await?;
-
-    for net_payload in fetched_networks {
-        let exists = all_networks.iter().any(|n| n.cidr.to_string() == net_payload.cidr);
-        if !exists {
-            tracing::info!("Auto-importing network {} ({}) from integration", net_payload.name, net_payload.cidr);
-            
-            use std::str::FromStr;
-            let cidr = sqlx::types::ipnetwork::IpNetwork::from_str(&net_payload.cidr)
-                .map_err(|e| anyhow::anyhow!("Invalid CIDR from integration: {}", e))?;
-            let gateway = net_payload.gateway.and_then(|g| g.parse::<std::net::IpAddr>().ok());
-
-            state.db.create_network(crate::db::CreateNetworkParams {
-                name: net_payload.name,
-                cidr,
-                gateway,
-                vlan_id: net_payload.vlan_id,
-                dns_servers: None,
-                description: Some(format!("Auto-imported from {} integration", model.name)),
-            }).await?;
-            // Refresh local cache
-            all_networks = state.db.list_networks().await?;
-        }
+pub fn create_provider(model: &integrations::Model) -> Result<Box<dyn IntegrationProvider>> {
+    match model.provider_type.as_str() {
+        "AdGuardHome" => Ok(Box::new(adguard::AdGuardIntegration::new(&model.config)?)),
+        other => Err(anyhow::anyhow!("Unknown provider type: {}", other)),
     }
+}
 
-    // 3. Sync Devices (DHCP Leases)
-    let fetched_devices = provider.fetch_devices().await?;
+// ---------------------------------------------------------------------------
+// Integration processing (broken into focused helpers)
+// ---------------------------------------------------------------------------
 
-    for payload in fetched_devices {
-        let mac = payload.mac_address.to_lowercase();
-        let ip_str = &payload.ip_address;
-        
-        // Skip IPv6 addresses as per configuration/user request
-        if let Ok(std::net::IpAddr::V6(_)) = ip_str.parse::<std::net::IpAddr>() {
+pub async fn process_integration(state: &AppState, model: &integrations::Model) -> Result<()> {
+    let provider = create_provider(model)?;
+
+    let _ = provider.fetch_services().await?;
+    sync_networks(state, &*provider, &model.name).await?;
+    sync_devices(state, &*provider).await?;
+
+    Ok(())
+}
+
+async fn sync_networks(
+    state: &AppState,
+    provider: &dyn IntegrationProvider,
+    integration_name: &str,
+) -> Result<()> {
+    let fetched = provider.fetch_networks().await?;
+    tracing::info!(
+        "Integration {} returned {} networks",
+        integration_name,
+        fetched.len()
+    );
+
+    let mut known_networks = state.db.list_networks().await?;
+
+    for net in fetched {
+        let already_exists = known_networks.iter().any(|n| n.cidr.to_string() == net.cidr);
+        if already_exists {
             continue;
         }
 
-        // Check if Interface exists (Primary definition of device identity here)
-        let existing_interface = interfaces::Entity::find()
-            .select_only()
-            .column(interfaces::Column::Id)
-            .column(interfaces::Column::DeviceId)
-            .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
-            .into_tuple::<(uuid::Uuid, uuid::Uuid)>()
-            .one(&state.conn)
+        tracing::info!(
+            "Auto-importing network {} ({}) from integration",
+            net.name,
+            net.cidr
+        );
+
+        use std::str::FromStr;
+        let cidr = sqlx::types::ipnetwork::IpNetwork::from_str(&net.cidr)
+            .map_err(|e| anyhow::anyhow!("Invalid CIDR from integration: {}", e))?;
+        let gateway = net
+            .gateway
+            .and_then(|g| g.parse::<std::net::IpAddr>().ok());
+
+        state
+            .db
+            .create_network(crate::db::CreateNetworkParams {
+                name: net.name,
+                cidr,
+                gateway,
+                vlan_id: net.vlan_id,
+                dns_servers: None,
+                description: Some(format!(
+                    "Auto-imported from {} integration",
+                    integration_name
+                )),
+            })
             .await?;
 
-        let device_id = match existing_interface {
-            Some((_interface_id, device_id)) => {
-                // Update Device info if needed
-                if let Some(device) = devices::Entity::find_by_id(device_id).one(&state.conn).await? {
-                    let mut active: devices::ActiveModel = device.into();
-                    if active.hostname.clone().unwrap() != payload.hostname {
-                         active.hostname = Set(payload.hostname.clone());
-                         active.update(&state.conn).await.ok();
-                    }
-                    device_id
-                } else {
-                    // Orphaned interface? Should not happen with foreign keys, but just in case
-                    continue; 
-                }
-            },
-            None => {
-                // Create New Device
-                let new_device_id = uuid::Uuid::now_v7();
-                let new_device = devices::ActiveModel {
-                    id: Set(new_device_id),
-                    hostname: Set(payload.hostname.clone()),
-                    r#type: Set("OTHER".to_string()), 
-                    created_at: Set(Utc::now().into()),
-                    ..Default::default()
-                };
-                new_device.insert(&state.conn).await?;
-
-                // Create Interface using DB method (handles MAC types)
-                
-                state.db.create_interface(new_device_id, crate::models::CreateInterfacePayload {
-                    name: "eth0".to_string(),
-                    mac_address: Some(mac.clone()),
-                    interface_type: "ethernet".to_string(),
-                }).await?;
-                
-                new_device_id
-            }
-        };
-
-        let is_static_lease = payload.is_static;
-
-        // Find matching network
-        let matched_network = all_networks.iter().find(|n| {
-            if let Ok(ip) = ip_str.parse::<std::net::IpAddr>() {
-                return n.cidr.contains(ip);
-            }
-            false
-        });
-
-        if let Some(network) = matched_network {
-            // Check if IP assignment exists
-            // Let's cast IP to INET just to be safe.
-            let existing_ip = ip_addresses::Entity::find()
-            .select_only()
-            .column(ip_addresses::Column::Id)
-            .column(ip_addresses::Column::InterfaceId)
-            .column(ip_addresses::Column::IsStatic)
-            .filter(Expr::col(ip_addresses::Column::IpAddress).eq(Expr::val(ip_str).cast_as(Alias::new("inet"))))
-            .into_tuple::<(uuid::Uuid, Option<uuid::Uuid>, bool)>()
-            .one(&state.conn)
-            .await?;
-
-            let should_create = match existing_ip {
-                None => true,
-                Some((_, interface_id, _)) => interface_id.is_none(),
-            };
-
-            if should_create {
-                // Get interface ID again (could have been created)
-                let interface_id = interfaces::Entity::find()
-                .select_only()
-                .column(interfaces::Column::Id)
-                .filter(Expr::col(interfaces::Column::MacAddress).eq(Expr::val(&mac).cast_as(Alias::new("macaddr"))))
-                .into_tuple::<uuid::Uuid>()
-                .one(&state.conn)
-                .await?
-                .ok_or_else(|| anyhow::anyhow!("Interface not found after creation/check"))?;
-
-                use crate::db::CreateIpParams;
-                use crate::models::IpStatus;
-                use std::str::FromStr;
-
-                state.db.create_ip(CreateIpParams {
-                    network_id: network.id,
-                    device_id: Some(device_id),
-                    interface_id: Some(interface_id),
-                    ip_address: ip_str.parse().unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
-                    mac_address: mac_address::MacAddress::from_str(&mac).ok(),
-                    is_static: is_static_lease,
-                    status: IpStatus::Active,
-                    description: Some("Synced from Integration".to_string()),
-                }).await?;
-            } else {
-                // Determine if we need to upgrade a dynamic lease to a static lease
-                if let Some((ip_id, _, db_is_static)) = existing_ip {
-                    if is_static_lease && !db_is_static {
-                        tracing::info!("Upgrading existing IP {} to static based on integration sync.", ip_str);
-                        let sql = "UPDATE ip_addresses SET is_static = true WHERE id = $1";
-                        let stmt = Statement::from_sql_and_values(
-                            DatabaseBackend::Postgres,
-                            sql,
-                            vec![ip_id.into()]
-                        );
-                        let _ = state.conn.execute(stmt).await;
-                    }
-                }
-            }
-        } else {
-            tracing::warn!("Skipping IP sync for {}: No matching network found for IP {}", payload.hostname, ip_str);
-        }
+        known_networks = state.db.list_networks().await?;
     }
-    
+
     Ok(())
 }
 
-pub async fn trigger_static_lease_push(state: &AppState, mac: &str, ip: &str, hostname: &str) {
-    let integrations_res = integrations::Entity::find()
-        .filter(integrations::Column::Status.eq("ACTIVE"))
-        .all(&state.conn)
-        .await;
+async fn sync_devices(state: &AppState, provider: &dyn IntegrationProvider) -> Result<()> {
+    let leases = provider.fetch_devices().await?;
+    let all_networks = state.db.list_networks().await?;
 
-    if let Ok(active_integrations) = integrations_res {
-        for model in active_integrations {
-            let provider: Box<dyn IntegrationProvider> = match model.provider_type.as_str() {
-                "AdGuardHome" => {
-                    if let Ok(adg) = adguard::AdGuardIntegration::new(&model.config) {
-                        Box::new(adg)
-                    } else {
-                        continue;
-                    }
-                },
-                _ => continue,
-            };
+    for lease in leases {
+        // Skip IPv6
+        if let Ok(std::net::IpAddr::V6(_)) = lease.ip_address.parse::<std::net::IpAddr>() {
+            continue;
+        }
 
-            if let Err(e) = provider.push_static_lease(mac, ip, hostname).await {
-                tracing::error!("Failed to push static lease to integration {}: {}", model.name, e);
+        let mac = lease.mac_address.to_lowercase();
+        let device_id = ensure_device_for_mac(state, &mac, &lease.hostname).await?;
+
+        let matched_network = all_networks.iter().find(|n| {
+            lease
+                .ip_address
+                .parse::<std::net::IpAddr>()
+                .map(|ip| n.cidr.contains(ip))
+                .unwrap_or(false)
+        });
+
+        let Some(network) = matched_network else {
+            tracing::warn!(
+                "Skipping IP sync for {}: no matching network for IP {}",
+                lease.hostname,
+                lease.ip_address
+            );
+            continue;
+        };
+
+        sync_ip_for_device(state, &lease, &mac, device_id, network.id).await?;
+    }
+
+    Ok(())
+}
+
+async fn ensure_device_for_mac(
+    state: &AppState,
+    mac: &str,
+    hostname: &str,
+) -> Result<uuid::Uuid> {
+    let existing = interfaces::Entity::find()
+        .select_only()
+        .column(interfaces::Column::Id)
+        .column(interfaces::Column::DeviceId)
+        .filter(
+            Expr::col(interfaces::Column::MacAddress)
+                .eq(Expr::val(mac).cast_as(Alias::new("macaddr"))),
+        )
+        .into_tuple::<(uuid::Uuid, uuid::Uuid)>()
+        .one(&state.db.conn)
+        .await?;
+
+    if let Some((_iface_id, device_id)) = existing {
+        if let Some(device) = devices::Entity::find_by_id(device_id)
+            .one(&state.db.conn)
+            .await?
+        {
+            if device.hostname != hostname {
+                let mut active: devices::ActiveModel = device.into();
+                active.hostname = Set(hostname.to_string());
+                if let Err(e) = active.update(&state.db.conn).await {
+                    tracing::warn!("Failed to update hostname for device {}: {}", device_id, e);
+                }
             }
+        }
+        return Ok(device_id);
+    }
+
+    let new_device_id = uuid::Uuid::now_v7();
+    let new_device = devices::ActiveModel {
+        id: Set(new_device_id),
+        hostname: Set(hostname.to_string()),
+        r#type: Set("OTHER".to_string()),
+        created_at: Set(Utc::now().into()),
+        ..Default::default()
+    };
+    new_device.insert(&state.db.conn).await?;
+
+    state
+        .db
+        .create_interface(
+            new_device_id,
+            crate::models::CreateInterfacePayload {
+                name: "eth0".to_string(),
+                mac_address: Some(mac.to_string()),
+                interface_type: "ethernet".to_string(),
+            },
+        )
+        .await?;
+
+    Ok(new_device_id)
+}
+
+async fn sync_ip_for_device(
+    state: &AppState,
+    lease: &IntegrationDhcpLease,
+    mac: &str,
+    device_id: uuid::Uuid,
+    network_id: uuid::Uuid,
+) -> Result<()> {
+    let ip_str = &lease.ip_address;
+
+    let existing_ip = ip_addresses::Entity::find()
+        .select_only()
+        .column(ip_addresses::Column::Id)
+        .column(ip_addresses::Column::InterfaceId)
+        .column(ip_addresses::Column::IsStatic)
+        .filter(
+            Expr::col(ip_addresses::Column::IpAddress)
+                .eq(Expr::val(ip_str).cast_as(Alias::new("inet"))),
+        )
+        .into_tuple::<(uuid::Uuid, Option<uuid::Uuid>, bool)>()
+        .one(&state.db.conn)
+        .await?;
+
+    let should_create = match &existing_ip {
+        None => true,
+        Some((_, iface_id, _)) => iface_id.is_none(),
+    };
+
+    if should_create {
+        let interface_id = interfaces::Entity::find()
+            .select_only()
+            .column(interfaces::Column::Id)
+            .filter(
+                Expr::col(interfaces::Column::MacAddress)
+                    .eq(Expr::val(mac).cast_as(Alias::new("macaddr"))),
+            )
+            .into_tuple::<uuid::Uuid>()
+            .one(&state.db.conn)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Interface not found after creation/check"))?;
+
+        use std::str::FromStr;
+        state
+            .db
+            .create_ip(crate::db::CreateIpParams {
+                network_id,
+                device_id: Some(device_id),
+                interface_id: Some(interface_id),
+                ip_address: ip_str
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
+                mac_address: mac_address::MacAddress::from_str(mac).ok(),
+                is_static: lease.is_static,
+                status: crate::models::IpStatus::Active,
+                description: Some("Synced from Integration".to_string()),
+            })
+            .await?;
+    } else if let Some((ip_id, _, db_is_static)) = existing_ip {
+        // Upgrade dynamic → static if the integration says it's static
+        if lease.is_static && !db_is_static {
+            tracing::info!(
+                "Upgrading existing IP {} to static based on integration sync.",
+                ip_str
+            );
+            let stmt = Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                "UPDATE ip_addresses SET is_static = true WHERE id = $1",
+                vec![ip_id.into()],
+            );
+            if let Err(e) = state.db.conn.execute(stmt).await {
+                tracing::warn!("Failed to upgrade IP {} to static: {}", ip_str, e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Static lease push / delete (unified)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy)]
+enum LeaseAction {
+    Push,
+    Delete,
+}
+
+async fn trigger_static_lease_action(
+    state: &AppState,
+    action: LeaseAction,
+    mac: &str,
+    ip: &str,
+    hostname: &str,
+) {
+    let active_integrations = match integrations::Entity::find()
+        .filter(integrations::Column::Status.eq("ACTIVE"))
+        .all(&state.db.conn)
+        .await
+    {
+        Ok(list) => list,
+        Err(e) => {
+            tracing::error!("Failed to query active integrations: {}", e);
+            return;
+        }
+    };
+
+    for model in active_integrations {
+        let provider = match create_provider(&model) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        let result = match action {
+            LeaseAction::Push => provider.push_static_lease(mac, ip, hostname).await,
+            LeaseAction::Delete => provider.delete_static_lease(mac, ip, hostname).await,
+        };
+
+        if let Err(e) = result {
+            tracing::error!(
+                "Failed to {:?} static lease for integration {}: {}",
+                action,
+                model.name,
+                e
+            );
         }
     }
 }
 
+pub async fn trigger_static_lease_push(state: &AppState, mac: &str, ip: &str, hostname: &str) {
+    trigger_static_lease_action(state, LeaseAction::Push, mac, ip, hostname).await;
+}
+
 pub async fn trigger_static_lease_delete(state: &AppState, mac: &str, ip: &str, hostname: &str) {
-    let integrations_res = integrations::Entity::find()
-        .filter(integrations::Column::Status.eq("ACTIVE"))
-        .all(&state.conn)
-        .await;
+    trigger_static_lease_action(state, LeaseAction::Delete, mac, ip, hostname).await;
+}
 
-    if let Ok(active_integrations) = integrations_res {
-        for model in active_integrations {
-            let provider: Box<dyn IntegrationProvider> = match model.provider_type.as_str() {
-                "AdGuardHome" => {
-                    if let Ok(adg) = adguard::AdGuardIntegration::new(&model.config) {
-                        Box::new(adg)
-                    } else {
-                        continue;
-                    }
-                },
-                _ => continue,
-            };
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-            if let Err(e) = provider.delete_static_lease(mac, ip, hostname).await {
-                tracing::error!("Failed to delete static lease from integration {}: {}", model.name, e);
-            }
-        }
+async fn set_integration_status(
+    state: &AppState,
+    model: &integrations::Model,
+    status: &str,
+) {
+    let mut active: integrations::ActiveModel = model.clone().into();
+    active.status = Set(Some(status.to_string()));
+    if let Err(e) = active.update(&state.db.conn).await {
+        tracing::warn!("Failed to set integration status to '{}': {}", status, e);
     }
 }

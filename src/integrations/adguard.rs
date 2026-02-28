@@ -27,13 +27,18 @@ impl AdGuardIntegration {
         let username = config.get("username").and_then(|v| v.as_str()).unwrap_or("").to_string();
         let password_encrypted = config.get("password").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
+        let skip_tls_verify = config
+            .get("skip_tls_verify")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true); // default true for homelab / self-signed certs
+
         Ok(Self {
             url,
             username,
             password_encrypted,
             client: Client::builder()
                 .cookie_store(true)
-                .danger_accept_invalid_certs(true) // Common in homelabs
+                .danger_accept_invalid_certs(skip_tls_verify)
                 .build()?,
         })
     }

@@ -38,8 +38,9 @@ chrono = { version = "0.4", features = ["serde"] }
 mac_address = { version = "1.1", features = ["serde"] }
 
 # Auth
-tower-sessions = "0.10"
-openidconnect = "3.4"   # OIDC Support
+tower-sessions = "0.13"
+tower-sessions-sqlx-store = { version = "0.14", features = ["postgres"] }
+openidconnect = "3.4"                                                     # OIDC Support
 bcrypt = "0.15"
 anyhow = "1.0"
 
@@ -57,5 +58,5 @@ aes-gcm = "0.10.3"
 base64 = "0.22.1"
 rand = "0.8.5"
 hex = "0.4.3"
-ipnetwork = { version = "0.21.1", features = ["serde"] }
+ipnetwork = { version = "0.20", features = ["serde"] }
 sea-query = "0.32"

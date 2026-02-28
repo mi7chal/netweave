@@ -3,12 +3,19 @@ use crate::entities::users;
 use sea_orm::*;
 use uuid::Uuid;
 
+pub struct UserCredentials {
+    pub id: Uuid,
+    pub username: String,
+    pub role: String,
+    pub password_hash: Option<String>,
+}
+
 impl Db {
     pub async fn create_user(
         &self,
         username: &str,
         email: &str,
-        password_hash: &str,
+        password_hash: Option<&str>,
         role: &str,
     ) -> Result<Uuid, anyhow::Error> {
         let existing = users::Entity::find()
@@ -25,7 +32,7 @@ impl Db {
             id: Set(new_id),
             username: Set(username.to_string()),
             email: Set(email.to_string()),
-            password_hash: Set(Some(password_hash.to_string())),
+            password_hash: Set(password_hash.map(|s| s.to_string())),
             role: Set(role.to_string()),
             ..Default::default()
         };
@@ -37,19 +44,17 @@ impl Db {
     pub async fn get_user_by_username(
         &self,
         username: &str,
-    ) -> Result<Option<(Uuid, String, String, String)>, anyhow::Error> {
+    ) -> Result<Option<UserCredentials>, anyhow::Error> {
         let user = users::Entity::find()
             .filter(users::Column::Username.eq(username))
             .one(&self.conn)
             .await?;
 
-        Ok(user.map(|u| {
-            (
-                u.id,
-                u.username,
-                u.role,
-                u.password_hash.unwrap_or_default(),
-            )
+        Ok(user.map(|u| UserCredentials {
+            id: u.id,
+            username: u.username,
+            role: u.role,
+            password_hash: u.password_hash,
         }))
     }
 }

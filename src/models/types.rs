@@ -49,7 +49,7 @@ impl Nullable for MacAddress {
     fn null() -> Value { Value::String(None) }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeviceType {
     Physical,
@@ -59,18 +59,13 @@ pub enum DeviceType {
     Switch,
     Ap,
     Router,
+    #[default]
     Other,
 }
 
 impl fmt::Display for DeviceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl Default for DeviceType {
-    fn default() -> Self {
-        Self::Other
     }
 }
 
@@ -89,11 +84,12 @@ impl From<&str> for DeviceType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, EnumIter, DeriveActiveEnum)]
 #[sqlx(type_name = "varchar", rename_all = "SCREAMING_SNAKE_CASE")]
 #[sea_orm(rs_type = "String", db_type = "Text", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IpStatus {
     #[sea_orm(string_value = "ACTIVE")]
+    #[default]
     Active,
     #[sea_orm(string_value = "RESERVED")]
     Reserved,
@@ -103,12 +99,6 @@ pub enum IpStatus {
     Deprecated,
     #[sea_orm(string_value = "FREE")]
     Free,
-}
-
-impl Default for IpStatus {
-    fn default() -> Self {
-        Self::Active
-    }
 }
 
 impl fmt::Display for IpStatus {

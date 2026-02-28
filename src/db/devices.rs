@@ -81,7 +81,7 @@ impl Db {
 
         // Prefer static IPs when choosing the primary IP for display
         for ip in &ips_models {
-            let iface_id = ip.interface_id.unwrap();
+            let Some(iface_id) = ip.interface_id else { continue };
             let existing = interface_ip_map.get(&iface_id);
             let should_insert = match existing {
                 None => true,
@@ -267,8 +267,7 @@ impl Db {
                 let matching_network = all_networks.iter().find(|n| n.cidr.contains(ip_addr));
 
                 if let Some(network) = matching_network {
-                    use sea_orm::prelude::IpNetwork;
-                    let ip_net = IpNetwork::new(ip_addr, if ip_addr.is_ipv4() { 32 } else { 128 }).unwrap();
+                    let ip_net = super::helpers::ip_to_network(ip_addr)?;
                     let ip_id = Uuid::now_v7();
 
                     let ip_sql = r#"

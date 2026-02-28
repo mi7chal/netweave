@@ -2,8 +2,7 @@ use super::{CreateNetworkParams, Db};
 use crate::entities::networks;
 use crate::models::Network;
 use sea_orm::*;
-use sea_orm::QueryOrder; 
-use sea_orm::prelude::IpNetwork;
+use sea_orm::QueryOrder;
 use uuid::Uuid;
 
 impl Db {
@@ -54,15 +53,14 @@ impl Db {
     pub async fn create_network(&self, params: CreateNetworkParams) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
 
-        let gateway = params.gateway.map(|ip| {
-             IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap()
-        });
-
-        let dns_servers = params.dns_servers.map(|v| {
-            v.into_iter()
-                .map(|ip| IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap())
-                .collect::<Vec<IpNetwork>>()
-        });
+        let gateway = params
+            .gateway
+            .map(super::helpers::ip_to_network)
+            .transpose()?;
+        let dns_servers = params
+            .dns_servers
+            .map(|v| v.into_iter().map(super::helpers::ip_to_network).collect())
+            .transpose()?;
 
         let network = networks::ActiveModel {
             id: Set(new_id),
@@ -72,7 +70,6 @@ impl Db {
             gateway: Set(gateway),
             dns_servers: Set(dns_servers),
             description: Set(params.description),
-            ..Default::default()
         };
 
         network.insert(&self.conn).await?;
@@ -90,15 +87,14 @@ impl Db {
                 None => return Ok(false),
             };
 
-        let gateway = params.gateway.map(|ip| {
-             IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap()
-        });
-
-        let dns_servers = params.dns_servers.map(|v| {
-            v.into_iter()
-                .map(|ip| IpNetwork::new(ip, if ip.is_ipv4() { 32 } else { 128 }).unwrap())
-                .collect::<Vec<IpNetwork>>()
-        });
+        let gateway = params
+            .gateway
+            .map(super::helpers::ip_to_network)
+            .transpose()?;
+        let dns_servers = params
+            .dns_servers
+            .map(|v| v.into_iter().map(super::helpers::ip_to_network).collect())
+            .transpose()?;
 
         network.name = Set(params.name);
         network.cidr = Set(params.cidr);

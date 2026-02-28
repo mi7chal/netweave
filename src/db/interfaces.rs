@@ -67,11 +67,11 @@ impl Db {
         id: Uuid,
         params: CreateInterfacePayload,
     ) -> Result<Interface, anyhow::Error> {
-        let interface: interfaces::ActiveModel = interfaces::Entity::find_by_id(id)
+        let interface = interfaces::Entity::find_by_id(id)
             .one(&self.conn)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Interface not found"))?
-            .into();
+            .ok_or_else(|| anyhow::anyhow!("Interface not found"))?;
+        let device_id = interface.device_id;
 
         let mac_str = params.mac_address.clone();
 
@@ -93,12 +93,12 @@ impl Db {
         );
 
         self.conn.execute(stmt).await?;
-        
+
         let mac = mac_str.and_then(|m| mac_address::MacAddress::from_str(&m).ok());
 
         Ok(Interface {
             id,
-            device_id: interface.device_id.unwrap(),
+            device_id,
             name: params.name,
             mac_address: mac,
             interface_type: Some(params.interface_type),

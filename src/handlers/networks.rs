@@ -1,8 +1,16 @@
 use crate::db::{CreateIpParams, CreateNetworkParams};
 use crate::handlers::common::{AppError, AppResult};
-use crate::models::{CreateNetworkIpPayload, CreateNetworkPayload, IpStatus, Network, NetworkIpView, UpdateNetworkPayload};
+use crate::models::{
+    CreateNetworkIpPayload, CreateNetworkPayload, IpStatus, Network, NetworkIpView,
+    UpdateNetworkPayload,
+};
+use crate::utils::validation;
 use crate::AppState;
-use axum::{extract::{Path, State}, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use sqlx::types::ipnetwork::IpNetwork;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -15,6 +23,8 @@ pub async fn create_network(
     State(state): State<AppState>,
     Json(payload): Json<CreateNetworkPayload>,
 ) -> AppResult<Json<Uuid>> {
+    validation::validate_name(&payload.name, "Network name", 50).map_err(AppError::BadRequest)?;
+
     let cidr = IpNetwork::from_str(&payload.cidr)
         .map_err(|e| AppError::BadRequest(format!("Invalid CIDR: {e}")))?;
 
@@ -24,7 +34,9 @@ pub async fn create_network(
         vlan_id: payload.vlan_id,
         gateway: payload.gateway.as_deref().and_then(|g| g.parse().ok()),
         dns_servers: payload.dns_servers.as_ref().map(|s| {
-            s.split(',').filter_map(|ip| ip.trim().parse().ok()).collect()
+            s.split(',')
+                .filter_map(|ip| ip.trim().parse().ok())
+                .collect()
         }),
         description: payload.description,
     };
@@ -36,7 +48,10 @@ pub async fn get_network(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<Network>> {
-    let network = state.db.get_network(id).await?
+    let network = state
+        .db
+        .get_network(id)
+        .await?
         .ok_or(AppError::NotFound("Network not found".into()))?;
     Ok(Json(network))
 }
@@ -46,6 +61,8 @@ pub async fn update_network(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateNetworkPayload>,
 ) -> AppResult<Json<bool>> {
+    validation::validate_name(&payload.name, "Network name", 50).map_err(AppError::BadRequest)?;
+
     let cidr = IpNetwork::from_str(&payload.cidr)
         .map_err(|e| AppError::BadRequest(format!("Invalid CIDR: {e}")))?;
 
@@ -55,7 +72,9 @@ pub async fn update_network(
         vlan_id: payload.vlan_id,
         gateway: payload.gateway.and_then(|s| s.parse().ok()),
         dns_servers: payload.dns_servers.map(|s| {
-            s.split(',').filter_map(|p| p.trim().parse().ok()).collect()
+            s.split(',')
+                .filter_map(|p| p.trim().parse().ok())
+                .collect()
         }),
         description: payload.description,
     };
@@ -88,7 +107,9 @@ pub async fn create_network_ip(
     let ip_address = std::net::IpAddr::from_str(&payload.ip_address)
         .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
 
-    let mac_address = payload.mac_address.as_ref()
+    let mac_address = payload
+        .mac_address
+        .as_ref()
         .filter(|m| !m.is_empty())
         .and_then(|m| mac_address::MacAddress::from_str(m).ok());
 

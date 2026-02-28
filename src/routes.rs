@@ -2,17 +2,30 @@ use crate::auth::{self, AuthUser, AUTH_SESSION_KEY};
 use crate::handlers;
 use crate::AppState;
 use axum::{
-    extract::Request,
+    extract::{Request, State},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{delete, get, post},
     Router,
 };
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
-use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
+use tower_sessions::{Expiry, Session, SessionManagerLayer};
+use tower_sessions_sqlx_store::PostgresStore;
 
-async fn auth_middleware(session: Session, mut request: Request, next: Next) -> Response {
-    let user: Option<AuthUser> = session.get(AUTH_SESSION_KEY).await.unwrap_or(None);
+async fn auth_middleware(
+    State(_): State<AppState>,
+    session: Session,
+    mut request: Request,
+    next: Next,
+) -> Response {
+    let user: Option<AuthUser> = match session.get(AUTH_SESSION_KEY).await {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::warn!("Failed to read auth session: {}", e);
+            None
+        }
+    };
 
     if let Some(user) = user {
         request.extensions_mut().insert(user);
@@ -26,7 +39,7 @@ async fn require_admin(request: Request, next: Next) -> Response {
     let is_admin = request
         .extensions()
         .get::<AuthUser>()
-        .map(|u| u.role == "ADMIN")
+        .map(|u| u.role.is_admin())
         .unwrap_or(false);
 
     if is_admin {
@@ -40,30 +53,69 @@ async fn require_admin(request: Request, next: Next) -> Response {
     }
 }
 
-pub fn create_router(state: AppState) -> Router {
-    let session_store = MemoryStore::default();
+fn build_cors_layer() -> CorsLayer {
+    use axum::http::{header, Method};
+
+    let allowed_origins = std::env::var("ALLOWED_ORIGINS").unwrap_or_default();
+
+    let methods = vec![
+        Method::GET,
+        Method::POST,
+        Method::PUT,
+        Method::DELETE,
+        Method::OPTIONS,
+    ];
+    let headers = vec![header::CONTENT_TYPE, header::AUTHORIZATION, header::COOKIE];
+
+    if allowed_origins.is_empty() {
+        CorsLayer::new()
+            .allow_methods(methods)
+            .allow_headers(headers)
+    } else {
+        let origins: Vec<axum::http::HeaderValue> = allowed_origins
+            .split(',')
+            .filter_map(|o| o.trim().parse().ok())
+            .collect();
+
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods(methods)
+            .allow_headers(headers)
+            .allow_credentials(true)
+    }
+}
+
+pub async fn create_router(state: AppState) -> anyhow::Result<Router> {
+    let session_store = PostgresStore::new(state.db.pool.clone());
+    session_store.migrate().await.map_err(|e| {
+        anyhow::anyhow!("Failed to migrate session store: {}", e)
+    })?;
+
+    let secure_cookie = std::env::var("SESSION_SECURE_COOKIE")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+
     let session_layer = SessionManagerLayer::new(session_store)
-        .with_secure(false)
+        .with_secure(secure_cookie)
+        .with_http_only(true)
         .with_same_site(tower_sessions::cookie::SameSite::Lax)
         .with_expiry(Expiry::OnInactivity(
-            tower_sessions::cookie::time::Duration::hours(1), // 1 hour session
+            tower_sessions::cookie::time::Duration::hours(1),
         ));
 
-    // Public/Viewer Routes (Authenticated)
+    // Viewer routes (authenticated, any role)
     let viewer_routes = Router::new()
         .route("/dashboard", get(handlers::show_dashboard))
         .route("/services", get(handlers::list_services))
         .route("/services/:id", get(handlers::get_service));
 
-    // Admin Routes (Authenticated + Admin Role)
+    // Admin routes (authenticated + admin role)
     let admin_routes = Router::new()
-        // Service Management
         .route("/services", post(handlers::create_service))
         .route(
             "/services/:id",
             post(handlers::update_service).delete(handlers::delete_service),
         )
-        // Devices
         .route(
             "/devices",
             get(handlers::list_devices).post(handlers::create_device),
@@ -74,20 +126,17 @@ pub fn create_router(state: AppState) -> Router {
                 .put(handlers::update_device)
                 .delete(handlers::delete_device),
         )
-        // Device Interfaces
         .route("/devices/:id/interfaces", post(handlers::create_interface))
         .route(
             "/devices/:device_id/interfaces/:interface_id",
             delete(handlers::delete_interface).put(handlers::update_interface),
         )
-        // Device IPs
         .route("/devices/:id/ips", get(handlers::list_device_ips))
         .route("/devices/:id/ips", post(handlers::assign_ip))
         .route(
             "/devices/:device_id/ips/:ip_id",
             delete(handlers::delete_ip_assignment).put(handlers::update_ip),
         )
-        // Networks
         .route(
             "/networks",
             get(handlers::list_networks).post(handlers::create_network),
@@ -98,12 +147,10 @@ pub fn create_router(state: AppState) -> Router {
                 .put(handlers::update_network)
                 .delete(handlers::delete_network),
         )
-        // Network IPs
         .route(
             "/networks/:id/ips",
             get(handlers::list_network_ips).post(handlers::create_network_ip),
         )
-        // Integrations
         .route(
             "/integrations",
             get(handlers::integrations::list_integrations)
@@ -117,36 +164,36 @@ pub fn create_router(state: AppState) -> Router {
             "/integrations/:id",
             delete(handlers::integrations::delete_integration),
         )
-        // Settings
         .route(
             "/settings",
             get(handlers::settings::get_settings).put(handlers::settings::update_settings),
         )
         .route_layer(middleware::from_fn(require_admin));
 
-    // Combine API routes
     let api_routes = Router::new()
         .merge(viewer_routes)
         .merge(admin_routes)
-        .route_layer(middleware::from_fn(auth_middleware));
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ));
 
-    // Public API routes (no auth required)
-    let public_api = Router::new()
-        .route("/settings/public", get(handlers::settings::get_settings));
+    let public_api = Router::new().route(
+        "/settings/public",
+        get(handlers::settings::get_public_settings),
+    );
 
-    // Auth Routes (Public)
     let auth_routes = auth::routes(state.clone());
 
-    // Static file serving for frontend SPA (production)
-    let spa_service = ServeDir::new("web/dist")
-        .not_found_service(ServeFile::new("web/dist/index.html"));
+    let spa_service =
+        ServeDir::new("web/dist").not_found_service(ServeFile::new("web/dist/index.html"));
 
-    Router::new()
+    Ok(Router::new()
         .nest("/api", api_routes)
         .nest("/api", public_api)
         .nest("/auth", auth_routes)
         .fallback_service(spa_service)
+        .layer(build_cors_layer())
         .layer(session_layer)
-        .with_state(state)
+        .with_state(state))
 }
-

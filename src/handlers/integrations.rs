@@ -1,11 +1,16 @@
-use crate::handlers::common::{AppError, AppResult};
-use crate::AppState;
-use axum::{extract::{Path, State}, http::StatusCode, response::IntoResponse, Json};
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
-use uuid::Uuid;
 use crate::entities::integrations;
+use crate::handlers::common::{AppError, AppResult};
+use crate::utils::{encryption, validation};
+use crate::AppState;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
-use crate::utils::encryption;
+use uuid::Uuid;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct CreateIntegrationPayload {
@@ -14,10 +19,13 @@ pub struct CreateIntegrationPayload {
     pub config: serde_json::Value,
 }
 
-pub async fn list_integrations(State(state): State<AppState>) -> AppResult<Json<Vec<integrations::Model>>> {
-    let mut list = integrations::Entity::find().all(&state.conn).await?;
+pub async fn list_integrations(
+    State(state): State<AppState>,
+) -> AppResult<Json<Vec<integrations::Model>>> {
+    let mut list = integrations::Entity::find()
+        .all(&state.db.conn)
+        .await?;
 
-    // Strip sensitive fields
     for i in &mut list {
         if let serde_json::Value::Object(ref mut map) = i.config {
             map.remove("password");
@@ -32,10 +40,16 @@ pub async fn create_integration(
     State(state): State<AppState>,
     Json(mut payload): Json<CreateIntegrationPayload>,
 ) -> AppResult<Json<integrations::Model>> {
-    // Encrypt sensitive fields
+    validation::validate_name(&payload.name, "Integration name", 100)
+        .map_err(AppError::BadRequest)?;
+
     if let serde_json::Value::Object(ref mut map) = payload.config {
         for field in ["password", "token"] {
-            if let Some(val) = map.get(field).and_then(|v| v.as_str()).filter(|v| !v.is_empty()) {
+            if let Some(val) = map
+                .get(field)
+                .and_then(|v| v.as_str())
+                .filter(|v| !v.is_empty())
+            {
                 let encrypted = encryption::encrypt(val)
                     .map_err(|e| AppError::Internal(anyhow::anyhow!("Encryption error: {e}")))?;
                 map.insert(field.to_string(), serde_json::json!(encrypted));
@@ -55,7 +69,7 @@ pub async fn create_integration(
         ..Default::default()
     };
 
-    let saved = model.insert(&state.conn).await?;
+    let saved = model.insert(&state.db.conn).await?;
     let integration = saved.clone();
     let s = state.clone();
 
@@ -66,11 +80,14 @@ pub async fn create_integration(
                 let mut active: integrations::ActiveModel = integration.into();
                 active.status = Set(Some("ACTIVE".to_string()));
                 active.last_sync_at = Set(Some(chrono::Utc::now().into()));
-                let _ = active.update(&s.conn).await;
+                if let Err(e) = active.update(&s.db.conn).await {
+                    tracing::error!("Failed to update integration status to ACTIVE: {}", e);
+                }
             }
             Err(e) => {
                 tracing::error!("Auto sync failed: {e}");
-                update_integration_status(&s, &integration, &format!("ERROR: {}", e.to_string().chars().take(240).collect::<String>())).await;
+                let msg: String = e.to_string().chars().take(240).collect();
+                update_integration_status(&s, &integration, &format!("ERROR: {msg}")).await;
             }
         }
     });
@@ -82,7 +99,9 @@ pub async fn delete_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
-    integrations::Entity::delete_by_id(id).exec(&state.conn).await?;
+    integrations::Entity::delete_by_id(id)
+        .exec(&state.db.conn)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -90,7 +109,10 @@ pub async fn trigger_sync(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    let integration = match integrations::Entity::find_by_id(id).one(&state.conn).await {
+    let integration = match integrations::Entity::find_by_id(id)
+        .one(&state.db.conn)
+        .await
+    {
         Ok(Some(i)) => i,
         Ok(None) => return (StatusCode::NOT_FOUND, "Integration not found").into_response(),
         Err(e) => return AppError::Internal(e.into()).into_response(),
@@ -104,11 +126,14 @@ pub async fn trigger_sync(
                 let mut active: integrations::ActiveModel = integration.into();
                 active.status = Set(Some("ACTIVE".to_string()));
                 active.last_sync_at = Set(Some(chrono::Utc::now().into()));
-                active.update(&state.conn).await.ok();
+                if let Err(e) = active.update(&state.db.conn).await {
+                    tracing::error!("Failed to update integration status after sync: {}", e);
+                }
             }
             Err(e) => {
                 tracing::error!("Manual sync failed: {e}");
-                update_integration_status(&state, &integration, &format!("ERROR: {}", e.to_string().chars().take(240).collect::<String>())).await;
+                let msg: String = e.to_string().chars().take(240).collect();
+                update_integration_status(&state, &integration, &format!("ERROR: {msg}")).await;
             }
         }
     });
@@ -116,8 +141,14 @@ pub async fn trigger_sync(
     (StatusCode::ACCEPTED, "Sync started").into_response()
 }
 
-async fn update_integration_status(state: &AppState, integration: &integrations::Model, status: &str) {
+async fn update_integration_status(
+    state: &AppState,
+    integration: &integrations::Model,
+    status: &str,
+) {
     let mut active: integrations::ActiveModel = integration.clone().into();
     active.status = Set(Some(status.to_string()));
-    let _ = active.update(&state.conn).await;
+    if let Err(e) = active.update(&state.db.conn).await {
+        tracing::warn!("Failed to update integration status to '{}': {}", status, e);
+    }
 }

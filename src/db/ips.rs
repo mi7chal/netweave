@@ -26,9 +26,7 @@ impl Db {
         };
 
         let new_id = Uuid::now_v7();
-        
-        use sea_orm::prelude::IpNetwork;
-        let ip_net = IpNetwork::new(params.ip_address, if params.ip_address.is_ipv4() { 32 } else { 128 }).unwrap();
+        let ip_net = super::helpers::ip_to_network(params.ip_address)?;
 
         // Raw SQL for complex generic index constrained ON CONFLICT
         let sql = r#"
@@ -164,9 +162,7 @@ impl Db {
         let mut active_model: ip_addresses::ActiveModel = ip.into();
 
         if let Some(ip_addr) = params.ip_address {
-            use sea_orm::prelude::IpNetwork;
-            let ip_net = IpNetwork::new(ip_addr, if ip_addr.is_ipv4() { 32 } else { 128 }).unwrap();
-            active_model.ip_address = Set(ip_net);
+            active_model.ip_address = Set(super::helpers::ip_to_network(ip_addr)?);
         }
 
         if let Some(is_static) = params.is_static {
