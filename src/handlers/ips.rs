@@ -2,6 +2,7 @@ use crate::db::CreateIpParams;
 use crate::db::helpers;
 use crate::handlers::common::{AppError, AppResult};
 use crate::models::{AssignIpPayload, IpStatus};
+use crate::models::types::parse_optional_mac;
 use crate::AppState;
 use axum::{
     extract::{Path, State},
@@ -21,16 +22,11 @@ pub async fn assign_ip(
     let ip_address = IpAddr::from_str(&payload.ip_address)
         .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
 
-    let mac_address = payload
-        .mac_address
-        .as_ref()
-        .filter(|m| !m.is_empty())
-        .and_then(|m| mac_address::MacAddress::from_str(m).ok());
+    let mac_address = parse_optional_mac(&payload.mac_address);
 
-    let status = match payload.status.as_deref() {
-        Some("RESERVED") => IpStatus::Reserved,
-        _ => IpStatus::Active,
-    };
+    let status = payload.status.as_deref()
+        .and_then(|s| IpStatus::from_str(s).ok())
+        .unwrap_or(IpStatus::Active);
 
     let params = CreateIpParams {
         network_id: payload.network_id,
@@ -88,18 +84,11 @@ pub async fn update_ip(
         .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
 
     let mac_address = payload.mac_address.as_ref().map(|m| {
-        if m.is_empty() {
-            None
-        } else {
-            mac_address::MacAddress::from_str(m).ok()
-        }
+        if m.is_empty() { None } else { mac_address::MacAddress::from_str(m).ok() }
     });
 
-    let status = payload.status.as_deref().map(|s| match s {
-        "RESERVED" => IpStatus::Reserved,
-        "DHCP" => IpStatus::Dhcp,
-        _ => IpStatus::Active,
-    });
+    let status = payload.status.as_deref()
+        .and_then(|s| IpStatus::from_str(s).ok());
 
     let existing_ip = state
         .db

@@ -8,15 +8,8 @@ import { Form } from "@/components/ui/form";
 import { FormInputField } from "./forms/FormInputField";
 import { fetchApi } from "@/lib/api-client";
 import { toast } from "sonner";
-
-export interface Network {
-    id: string;
-    name: string;
-    cidr: string;
-    vlan_id?: number;
-    gateway?: string;
-    description?: string;
-}
+import type { Network } from "@/types/api";
+export type { Network };
 
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -41,7 +34,7 @@ export function NetworkDialog({ open, onOpenChange, onSaved, initialData }: Netw
         defaultValues: {
             name: initialData?.name || "",
             cidr: initialData?.cidr || "",
-            vlan_id: initialData?.vlan_id,
+            vlan_id: initialData?.vlan_id ?? undefined,
             gateway: initialData?.gateway || "",
             description: initialData?.description || "",
         },
@@ -52,7 +45,7 @@ export function NetworkDialog({ open, onOpenChange, onSaved, initialData }: Netw
             form.reset({
                 name: initialData?.name || "",
                 cidr: initialData?.cidr || "",
-                vlan_id: initialData?.vlan_id,
+                vlan_id: initialData?.vlan_id ?? undefined,
                 gateway: initialData?.gateway || "",
                 description: initialData?.description || "",
             });

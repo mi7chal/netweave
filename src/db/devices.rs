@@ -150,73 +150,31 @@ impl Db {
             
             for ip in ips_models {
                 if let Some(interface_id) = ip.interface_id {
-                    let ip_entity = crate::models::IpAddress {
-                        id: ip.id,
-                        network_id: ip.network_id,
-                        interface_id: ip.interface_id,
-                        ip_address: ip.ip_address.ip(),
-                        mac_address: ip.mac_address.map(|m| m.0),
-                        status: ip.status,
-                        description: ip.description,
-                        is_static: ip.is_static,
-                    };
-
-                    ips_map.entry(interface_id).or_default().push(ip_entity);
+                    ips_map.entry(interface_id).or_default().push(crate::models::IpAddress::from(ip));
                 }
             }
         }
 
-        let dt: DeviceType = d.r#type.as_str().into();
-
-        let device_entity = Device {
-            id: d.id,
-            parent_device_id: d.parent_device_id,
-            hostname: d.hostname,
-            device_type: dt,
-            cpu_cores: d.cpu_cores,
-            ram_gb: d.ram_gb,
-            storage_gb: d.storage_gb,
-            os_info: d.os_info,
-            meta_data: d.meta_data,
-            created_at: d.created_at.into(),
-        };
+        let device_entity = Device::from(d);
 
         let interfaces_with_ips = interfaces_models.into_iter().map(|i| {
-             let interface_entity = crate::models::Interface {
-                id: i.id,
-                device_id: i.device_id,
-                name: i.name,
-                mac_address: i.mac_address.map(|m| m.0),
-                interface_type: i.r#type,
-            };
+            let iface_id = i.id;
             InterfaceWithIps {
-                interface: interface_entity,
-                ips: ips_map.remove(&i.id).unwrap_or_default(),
+                interface: crate::models::Interface::from(i),
+                ips: ips_map.remove(&iface_id).unwrap_or_default(),
             }
         }).collect();
 
         // Fetch services for this device
         let services_models = services::Entity::find()
-            .filter(services::Column::DeviceId.eq(d.id))
+            .filter(services::Column::DeviceId.eq(device_entity.id))
             .all(&self.conn)
             .await?;
-
-        let services = services_models.into_iter().map(|s| crate::models::Service {
-            id: s.id,
-            device_id: s.device_id,
-            name: s.name,
-            base_url: s.base_url,
-            health_endpoint: s.health_endpoint,
-            monitor_interval_seconds: s.monitor_interval_seconds,
-            total_checks: s.total_checks,
-            successful_checks: s.successful_checks,
-            is_public: s.is_public,
-        }).collect();
 
         Ok(Some(DeviceDetails {
             device: device_entity,
             interfaces: interfaces_with_ips,
-            services,
+            services: services_models.into_iter().map(crate::models::Service::from).collect(),
         }))
     }
 

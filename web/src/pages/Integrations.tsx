@@ -13,15 +13,9 @@ import { fetchApi } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { AddIntegrationDialog } from "../components/AddIntegrationDialog";
 import { toast } from "sonner";
+import type { Integration } from "@/types/api";
 import { PageHeader } from "@/components/PageHeader";
 
-interface Integration {
-    id: string;
-    name: string;
-    provider_type: string;
-    status: string;
-    last_sync_at: string | null;
-}
 
 export const Integrations = () => {
     const [refreshInterval, setRefreshInterval] = useState(5000);

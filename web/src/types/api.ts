@@ -110,3 +110,21 @@ export interface CreateDevicePayload {
     mac_address?: string; // Initial MAC
     ip_address?: string;  // Optional static IP
 }
+
+export interface Network {
+    id: string;
+    name: string;
+    cidr: string;
+    vlan_id?: number | null;
+    gateway?: string | null;
+    dns_servers?: string[] | null;
+    description?: string | null;
+}
+
+export interface Integration {
+    id: string;
+    name: string;
+    provider_type: string;
+    status: string;
+    last_sync_at: string | null;
+}

@@ -137,3 +137,81 @@ pub struct InterfaceWithIps {
     pub interface: Interface,
     pub ips: Vec<IpAddress>,
 }
+
+// ---------------------------------------------------------------------------
+// From impls: SeaORM entity → API model (eliminates field-by-field mapping)
+// ---------------------------------------------------------------------------
+
+impl From<crate::entities::networks::Model> for Network {
+    fn from(n: crate::entities::networks::Model) -> Self {
+        Self {
+            id: n.id,
+            name: n.name,
+            cidr: n.cidr,
+            vlan_id: n.vlan_id,
+            gateway: n.gateway.map(|gn| gn.ip()),
+            dns_servers: n.dns_servers.map(|v| v.iter().map(|ip| ip.ip()).collect()),
+            description: n.description,
+        }
+    }
+}
+
+impl From<crate::entities::devices::Model> for Device {
+    fn from(d: crate::entities::devices::Model) -> Self {
+        Self {
+            id: d.id,
+            parent_device_id: d.parent_device_id,
+            hostname: d.hostname,
+            device_type: d.r#type.as_str().into(),
+            cpu_cores: d.cpu_cores,
+            ram_gb: d.ram_gb,
+            storage_gb: d.storage_gb,
+            os_info: d.os_info,
+            meta_data: d.meta_data,
+            created_at: d.created_at.into(),
+        }
+    }
+}
+
+impl From<crate::entities::services::Model> for Service {
+    fn from(s: crate::entities::services::Model) -> Self {
+        Self {
+            id: s.id,
+            device_id: s.device_id,
+            name: s.name,
+            base_url: s.base_url,
+            health_endpoint: s.health_endpoint,
+            monitor_interval_seconds: s.monitor_interval_seconds,
+            total_checks: s.total_checks,
+            successful_checks: s.successful_checks,
+            is_public: s.is_public,
+        }
+    }
+}
+
+impl From<crate::entities::interfaces::Model> for Interface {
+    fn from(i: crate::entities::interfaces::Model) -> Self {
+        Self {
+            id: i.id,
+            device_id: i.device_id,
+            name: i.name,
+            mac_address: i.mac_address.map(|m| m.0),
+            interface_type: i.r#type,
+        }
+    }
+}
+
+impl From<crate::entities::ip_addresses::Model> for IpAddress {
+    fn from(ip: crate::entities::ip_addresses::Model) -> Self {
+        Self {
+            id: ip.id,
+            network_id: ip.network_id,
+            interface_id: ip.interface_id,
+            ip_address: ip.ip_address.ip(),
+            mac_address: ip.mac_address.map(|m| m.0),
+            status: ip.status,
+            description: ip.description,
+            is_static: ip.is_static,
+        }
+    }
+}

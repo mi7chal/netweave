@@ -62,7 +62,6 @@ function IpRow({ ip, iface, deviceId, mutate, showSeparator }: {
         try {
             await fetchApi(`/api/devices/${deviceId}/ips/${ip.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ip_address: targetIp, mac_address: iface.mac_address, is_static: true, status: "ACTIVE" }),
             });
             toast.success(`IP ${targetIp} is now statically assigned`);
@@ -75,7 +74,6 @@ function IpRow({ ip, iface, deviceId, mutate, showSeparator }: {
         try {
             await fetchApi(`/api/devices/${deviceId}/ips/${ip.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ip_address: targetIp, mac_address: iface.mac_address, is_static: true, status: "ACTIVE" }),
             });
             toast.success(`IP updated to ${targetIp}`);
@@ -88,7 +86,6 @@ function IpRow({ ip, iface, deviceId, mutate, showSeparator }: {
         try {
             await fetchApi(`/api/devices/${deviceId}/ips/${ip.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ is_static: false, status: "ACTIVE" }),
             });
             toast.success("Static IP released and is now back to dynamic");
@@ -177,7 +174,6 @@ function InterfaceCard({ iface, deviceId, mutate }: {
         try {
             await fetchApi(`/api/devices/${deviceId}/interfaces/${iface.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, mac_address: mac || null, interface_type: "ethernet" }),
             });
             toast.success("Interface updated");
@@ -260,7 +256,6 @@ export const DeviceDetailsPage = () => {
         try {
             await fetchApi(`/api/devices/${id}/interfaces`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, mac_address: mac || null, interface_type: "ethernet" }),
             });
             toast.success("Interface added");
@@ -279,7 +274,7 @@ export const DeviceDetailsPage = () => {
 
     const handleSaveDevice = async (data: Partial<CreateDevicePayload>) => {
         try {
-            await fetchApi(`/api/devices/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+            await fetchApi(`/api/devices/${id}`, { method: "PUT", body: JSON.stringify(data) });
             setEditDeviceOpen(false);
             toast.success("Device updated");
             mutate();

@@ -32,19 +32,8 @@ impl Db {
     }
 
     pub async fn get_service(&self, id: Uuid) -> Result<Option<Service>, anyhow::Error> {
-        let service = services::Entity::find_by_id(id).one(&self.conn).await?;
-
-        Ok(service.map(|s| Service {
-            id: s.id,
-            device_id: s.device_id,
-            name: s.name,
-            base_url: s.base_url,
-            health_endpoint: s.health_endpoint,
-            monitor_interval_seconds: s.monitor_interval_seconds,
-            total_checks: s.total_checks,
-            successful_checks: s.successful_checks,
-            is_public: s.is_public,
-        }))
+        let row = services::Entity::find_by_id(id).one(&self.conn).await?;
+        Ok(row.map(Service::from))
     }
 
     pub async fn create_service(

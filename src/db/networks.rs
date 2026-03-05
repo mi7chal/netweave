@@ -7,47 +7,16 @@ use uuid::Uuid;
 
 impl Db {
     pub async fn list_networks(&self) -> Result<Vec<Network>, anyhow::Error> {
-        let networks_models = networks::Entity::find()
+        let rows = networks::Entity::find()
             .order_by_asc(networks::Column::Name)
             .all(&self.conn)
             .await?;
-
-        // Map to models::Network
-        let result = networks_models.into_iter().map(|n| Network {
-            id: n.id,
-            name: n.name,
-            cidr: n.cidr,
-            vlan_id: n.vlan_id,
-            gateway: n.gateway.map(|gn| gn.ip()),
-            dns_servers: n.dns_servers.map(|v| {
-                v.iter().map(|n| n.ip()).collect()
-            }),
-            description: n.description,
-        }).collect();
-
-        Ok(result)
+        Ok(rows.into_iter().map(Network::from).collect())
     }
 
     pub async fn get_network(&self, id: Uuid) -> Result<Option<Network>, anyhow::Error> {
-        let network_model = networks::Entity::find_by_id(id)
-            .one(&self.conn)
-            .await?;
-
-        if let Some(n) = network_model {
-            Ok(Some(Network {
-                id: n.id,
-                name: n.name,
-                cidr: n.cidr,
-                vlan_id: n.vlan_id,
-                gateway: n.gateway.map(|gn| gn.ip()),
-                dns_servers: n.dns_servers.map(|v| {
-                    v.iter().map(|n| n.ip()).collect()
-                }),
-                description: n.description,
-            }))
-        } else {
-            Ok(None)
-        }
+        let row = networks::Entity::find_by_id(id).one(&self.conn).await?;
+        Ok(row.map(Network::from))
     }
 
     pub async fn create_network(&self, params: CreateNetworkParams) -> Result<Uuid, anyhow::Error> {

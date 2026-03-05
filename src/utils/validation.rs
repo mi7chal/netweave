@@ -40,8 +40,3 @@ pub fn validate_url(url: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Converts a host IP address to an IpNetwork with /32 (v4) or /128 (v6) prefix.
-pub fn ip_to_host_network(ip: std::net::IpAddr) -> ipnetwork::IpNetwork {
-    let prefix = if ip.is_ipv4() { 32 } else { 128 };
-    ipnetwork::IpNetwork::new(ip, prefix).expect("valid host prefix for IP")
-}

@@ -44,22 +44,12 @@ impl Db {
     }
 
     pub async fn list_interfaces(&self, device_id: Uuid) -> Result<Vec<Interface>, anyhow::Error> {
-        let interfaces = interfaces::Entity::find()
+        let rows = interfaces::Entity::find()
             .filter(interfaces::Column::DeviceId.eq(device_id))
             .order_by_asc(interfaces::Column::Name)
             .all(&self.conn)
             .await?;
-
-        Ok(interfaces
-            .into_iter()
-            .map(|i| Interface {
-                id: i.id,
-                device_id: i.device_id,
-                name: i.name,
-                mac_address: i.mac_address.map(|m| m.0),
-                interface_type: i.r#type,
-            })
-            .collect())
+        Ok(rows.into_iter().map(Interface::from).collect())
     }
 
     pub async fn update_interface(

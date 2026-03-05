@@ -107,6 +107,27 @@ impl fmt::Display for IpStatus {
     }
 }
 
+impl FromStr for IpStatus {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ACTIVE" => Ok(Self::Active),
+            "RESERVED" => Ok(Self::Reserved),
+            "DHCP" => Ok(Self::Dhcp),
+            "DEPRECATED" => Ok(Self::Deprecated),
+            "FREE" => Ok(Self::Free),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Parse an optional MAC address string, treating empty strings as None.
+pub fn parse_optional_mac(s: &Option<String>) -> Option<mac_address::MacAddress> {
+    s.as_ref()
+        .filter(|m| !m.is_empty())
+        .and_then(|m| mac_address::MacAddress::from_str(m).ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

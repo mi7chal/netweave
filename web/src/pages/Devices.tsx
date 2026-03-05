@@ -51,7 +51,6 @@ export const Devices = () => {
         try {
             await fetchApi("/api/devices", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             });
             mutate();

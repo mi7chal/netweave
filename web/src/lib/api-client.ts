@@ -8,8 +8,13 @@ export const setOnBackendDown = (cb: () => void) => {
 };
 
 export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
+    // Auto-set JSON content type for requests with a body
+    const headers = options?.body
+        ? { "Content-Type": "application/json", ...options?.headers }
+        : options?.headers;
+
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, { ...options, headers });
 
         if (!response.ok) {
             const errorBody = await response.text();
