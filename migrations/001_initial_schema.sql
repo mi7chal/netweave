@@ -1,4 +1,7 @@
--- psql UUID extension
+-- Baseline schema for NetWeave.
+-- This migration allows the application to fully bootstrap
+-- an empty database using SQLx migrations alone.
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 
@@ -133,6 +136,18 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     changes JSONB,
 
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Integrations (external systems / providers)
+CREATE TABLE IF NOT EXISTS "integrations" (
+  "id" uuid PRIMARY KEY,
+  "name" text NOT NULL,
+  "provider_type" text NOT NULL,
+  "config" jsonb NOT NULL DEFAULT '{}'::jsonb,
+  "last_sync_at" timestamptz,
+  "status" text DEFAULT 'PENDING',
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now()
 );
 
 ---------- TRIGGERS -------------
@@ -293,7 +308,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_target_table ON audit_logs(target_tabl
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-
+--
 -- App settings (key-value config store)
 CREATE TABLE IF NOT EXISTS app_settings (
     key VARCHAR(100) PRIMARY KEY,
@@ -301,6 +316,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO app_settings (key, value) VALUES ('homepage_public', 'false')
+-- Default settings
+INSERT INTO app_settings (key, value) VALUES
+    ('homepage_public', 'false'),
+    ('oidc_auto_import', 'false')
 ON CONFLICT (key) DO NOTHING;
-

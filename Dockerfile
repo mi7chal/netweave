@@ -67,9 +67,6 @@ COPY --from=frontend-builder /app/web/dist ./web/dist
 # Copy migrations
 COPY migrations/ ./migrations/
 
-# Copy schema for reference
-COPY schema.sql ./
-
 USER netweave
 
 EXPOSE 8789
