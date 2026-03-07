@@ -1,61 +1,47 @@
 use super::{CreateNetworkParams, Db};
+use crate::entities::networks;
 use crate::models::Network;
-use std::net::IpAddr;
+use sea_orm::QueryOrder;
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {
-    pub async fn list_networks(&self) -> Result<Vec<Network>, sqlx::Error> {
-        sqlx::query_as!(
-            Network,
-            r#"
-            SELECT
-                id, name, cidr, vlan_id,
-                gateway as "gateway: IpAddr",
-                dns_servers as "dns_servers: Vec<IpAddr>",
-                description
-            FROM networks
-            ORDER BY name ASC
-            "#
-        )
-        .fetch_all(&self.pool)
-        .await
+    pub async fn list_networks(&self) -> Result<Vec<Network>, anyhow::Error> {
+        let rows = networks::Entity::find()
+            .order_by_asc(networks::Column::Name)
+            .all(&self.conn)
+            .await?;
+        Ok(rows.into_iter().map(Network::from).collect())
     }
 
-    pub async fn get_network(&self, id: Uuid) -> Result<Option<Network>, sqlx::Error> {
-        sqlx::query_as!(
-            Network,
-            r#"
-            SELECT
-                id, name, cidr, vlan_id,
-                gateway as "gateway: IpAddr",
-                dns_servers as "dns_servers: Vec<IpAddr>",
-                description
-            FROM networks
-            WHERE id = $1
-            "#,
-            id
-        )
-        .fetch_optional(&self.pool)
-        .await
+    pub async fn get_network(&self, id: Uuid) -> Result<Option<Network>, anyhow::Error> {
+        let row = networks::Entity::find_by_id(id).one(&self.conn).await?;
+        Ok(row.map(Network::from))
     }
 
-    pub async fn create_network(&self, params: CreateNetworkParams) -> Result<Uuid, sqlx::Error> {
+    pub async fn create_network(&self, params: CreateNetworkParams) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO networks (id, name, cidr, vlan_id, gateway, dns_servers, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            "#,
-            new_id,
-            params.name,
-            params.cidr,
-            params.vlan_id,
-            params.gateway as _,
-            params.dns_servers as _,
-            params.description
-        )
-        .execute(&self.pool)
-        .await?;
+
+        let gateway = params
+            .gateway
+            .map(super::helpers::ip_to_network)
+            .transpose()?;
+        let dns_servers = params
+            .dns_servers
+            .map(|v| v.into_iter().map(super::helpers::ip_to_network).collect())
+            .transpose()?;
+
+        let network = networks::ActiveModel {
+            id: Set(new_id),
+            name: Set(params.name),
+            cidr: Set(params.cidr),
+            vlan_id: Set(params.vlan_id),
+            gateway: Set(gateway),
+            dns_servers: Set(dns_servers),
+            description: Set(params.description),
+        };
+
+        network.insert(&self.conn).await?;
         Ok(new_id)
     }
 
@@ -63,30 +49,35 @@ impl Db {
         &self,
         id: Uuid,
         params: CreateNetworkParams,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"
-            UPDATE networks
-            SET name = $1, cidr = $2, vlan_id = $3, gateway = $4, dns_servers = $5, description = $6
-            WHERE id = $7
-            "#,
-            params.name,
-            params.cidr,
-            params.vlan_id,
-            params.gateway as _,
-            params.dns_servers as _,
-            params.description,
-            id
-        )
-        .execute(&self.pool)
-        .await?;
-        Ok(result.rows_affected() > 0)
+    ) -> Result<bool, anyhow::Error> {
+        let mut network: networks::ActiveModel =
+            match networks::Entity::find_by_id(id).one(&self.conn).await? {
+                Some(n) => n.into(),
+                None => return Ok(false),
+            };
+
+        let gateway = params
+            .gateway
+            .map(super::helpers::ip_to_network)
+            .transpose()?;
+        let dns_servers = params
+            .dns_servers
+            .map(|v| v.into_iter().map(super::helpers::ip_to_network).collect())
+            .transpose()?;
+
+        network.name = Set(params.name);
+        network.cidr = Set(params.cidr);
+        network.vlan_id = Set(params.vlan_id);
+        network.gateway = Set(gateway);
+        network.dns_servers = Set(dns_servers);
+        network.description = Set(params.description);
+
+        network.update(&self.conn).await?;
+        Ok(true)
     }
 
-    pub async fn delete_network(&self, id: Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM networks WHERE id = $1", id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
+    pub async fn delete_network(&self, id: Uuid) -> Result<bool, anyhow::Error> {
+        let res = networks::Entity::delete_by_id(id).exec(&self.conn).await?;
+        Ok(res.rows_affected > 0)
     }
 }

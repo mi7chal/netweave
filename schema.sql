@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 
 CREATE TABLE IF NOT EXISTS users (
-    -- No default value for uuid beacuse UUID v7 is used (postgres uses v4)
+    -- No default value for uuid because UUID v7 is used (postgres uses v4)
     id UUID PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL ,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -101,7 +101,12 @@ CREATE TABLE IF NOT EXISTS services (
     health_endpoint VARCHAR(100),
     monitor_interval_seconds INT DEFAULT 600, -- 10 minutes
 
-    is_public BOOLEAN DEFAULT FALSE
+    -- uptime tracking
+    total_checks INT DEFAULT 0,
+    successful_checks INT DEFAULT 0,
+
+    is_public BOOLEAN DEFAULT FALSE,
+    icon_url VARCHAR(255)
 );
 
 -- Service secrets which may be used to access the service healthecks, APIs etc.
@@ -205,12 +210,12 @@ DECLARE
 BEGIN
     IF (TG_OP = 'DELETE') THEN
         audit_action := 'DELETE';
-        -- we need onlty the old state
+        -- we need only the old state
         audit_data := jsonb_build_object('old', row_to_json(OLD));
         target_uuid := OLD.id;
     ELSIF (TG_OP = 'UPDATE') THEN
         audit_action := 'UPDATE';
-        -- we nned both old and new states
+        -- we need both old and new states
         audit_data := jsonb_build_object('old', row_to_json(OLD), 'new', row_to_json(NEW));
         target_uuid := NEW.id;
     ELSIF (TG_OP = 'INSERT') THEN
@@ -264,7 +269,6 @@ FOR EACH ROW EXECUTE FUNCTION generic_audit_log_func();
 -- better to much indexs than too few
 
 
-CREATE INDEX IF NOT EXISTS idx_devices_name ON devices(name);
 CREATE INDEX IF NOT EXISTS idx_devices_hostname ON devices(hostname);
 CREATE INDEX IF NOT EXISTS idx_devices_parent_device_id ON devices(parent_device_id);
 CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at DESC);
@@ -273,7 +277,7 @@ CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_interfaces_device_id ON interfaces(device_id);
 CREATE INDEX IF NOT EXISTS idx_interfaces_mac_address ON interfaces(mac_address);
 
-CREATE INDEX IF NOT EXISTS idx_networks_cidr ON networks(cidr)
+CREATE INDEX IF NOT EXISTS idx_networks_cidr ON networks(cidr);
 
 CREATE INDEX IF NOT EXISTS idx_ip_addresses_interface_id ON ip_addresses(interface_id);
 CREATE INDEX IF NOT EXISTS idx_ip_addresses_network_id ON ip_addresses(network_id);
@@ -289,3 +293,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_target_table ON audit_logs(target_tabl
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- App settings (key-value config store)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO app_settings (key, value) VALUES ('homepage_public', 'false')
+ON CONFLICT (key) DO NOTHING;
+

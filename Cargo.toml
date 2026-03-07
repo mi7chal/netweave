@@ -1,33 +1,68 @@
 [package]
-name = "homelab_manager"
+name = "netweave"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "Lightweight IPAM & HomeLab Dashboard"
+license = "Apache-2.0"
+repository = "https://github.com/mi7chal/netweave"
+homepage = "https://github.com/mi7chal/netweave"
+authors = ["mi7chal"]
+rust-version = "1.84"
 
 [dependencies]
-axum = "0.8"
-tokio = { version = "1.0", features = ["full"] }
+# Web Framework
+axum = "0.7"                                                         # Stable version
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 
+# Database
+sqlx = { version = "0.8", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "ipnetwork",
+    "json",
+    "chrono",
+    "mac_address",
+] }
+sea-orm = { version = "1.1", features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-uuid",
+    "with-time",
+    "with-json",
+    "with-ipnetwork",
+] }
 
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "ipnetwork", "json", "chrono", "mac_address"] }
-uuid = { version = "1.0", features = ["v7", "serde"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0"}
-
-# Auth
-tower-sessions = "0.14"
-
-
-askama = "0.15"
-askama_axum = "0.4.0"
-
-dotenvy = "0.15"
-
-# Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-# Utils
+# Serialization & Data
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 mac_address = { version = "1.1", features = ["serde"] }
-tower-http = { version = "0.6", features = ["fs"] }
-bcrypt = "0.18"
+
+# Auth
+tower-sessions = { version = "0.13", features = ["signed"] }
+tower-sessions-sqlx-store = { version = "0.14", features = ["postgres"] }
+openidconnect = "3.4"                                                     # OIDC Support
+bcrypt = "0.15"
+anyhow = "1.0"
+
+# Utilities
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.11", features = [
+    "json",
+    "rustls-tls",
+    "cookies",
+] } # For Integrations
+async-trait = "0.1.89"
+aes-gcm = "0.10.3"
+base64 = "0.22.1"
+rand = "0.8.5"
+hex = "0.4.3"
+ipnetwork = { version = "0.20", features = ["serde"] }
+sea-query = "0.32"

@@ -1,125 +1,94 @@
-use crate::ui::{DetailProperty, DetailSection, FormField, FormSchema, TableView};
-use askama::Template;
+use crate::models::DashboardService;
+use crate::{AppState, ServiceStatus};
+
+pub use crate::models::ServiceWithStatus;
 use axum::{
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::{IntoResponse, Response},
+    Json,
 };
 use serde::Serialize;
+use std::net::IpAddr;
+use std::str::FromStr;
 
-// --- SHARED UI STRUCTURES ---
-
-#[derive(Serialize, Clone)]
-pub struct NavLink {
-    pub label: String,
-    pub url: String,
-    pub active: bool,
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
 }
 
-impl NavLink {
-    pub fn main_nav(active_key: &str, role: &str) -> Vec<Self> {
-        let mut links = vec![NavLink {
-            label: "Services".into(),
-            url: "/".into(),
-            active: active_key == "services",
-        }];
+pub enum AppError {
+    Internal(anyhow::Error),
+    BadRequest(String),
+    NotFound(String),
+    Unauthorized(String),
+    Forbidden(String),
+    TooManyRequests(String),
+    ServiceUnavailable(String),
+    Conflict(String),
+}
 
-        if role == "ADMIN" {
-            links.push(NavLink {
-                label: "Devices".into(),
-                url: "/devices".into(),
-                active: active_key == "devices",
-            });
-            links.push(NavLink {
-                label: "Networks".into(),
-                url: "/networks".into(),
-                active: active_key == "networks",
-            });
-        }
-        links
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, msg) = match self {
+            AppError::Internal(err) => {
+                tracing::error!("Internal error: {:?}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "An internal server error occurred.".to_string(),
+                )
+            }
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            AppError::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
+            AppError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+        };
+        (status, Json(ErrorResponse { error: msg })).into_response()
     }
 }
 
-pub fn get_nav(current_path: &str, role: &str) -> Vec<NavLink> {
-    let key = if current_path.starts_with("/devices") {
-        "devices"
-    } else if current_path.starts_with("/networks") {
-        "networks"
-    } else {
-        "services"
-    };
-    NavLink::main_nav(key, role)
-}
-
-// --- TEMPLATES ---
-
-#[derive(Template)]
-#[template(path = "generic_detail.html")]
-pub struct GenericDetailTemplate {
-    pub title: String,
-    pub back_link: String,
-    pub edit_link: Option<String>,
-    pub properties: Vec<DetailProperty>,
-    pub sections: Vec<DetailSection>,
-}
-
-#[derive(Template)]
-#[template(path = "generic_list.html")]
-pub struct GenericListTemplate {
-    pub title: String,
-    pub nav_links: Vec<NavLink>,
-    pub table: TableView,
-    pub add_link: Option<String>,
-    pub add_button_label: String,
-    pub empty_message: String,
-    pub search_query: Option<String>,
-    pub search_action: Option<String>,
-}
-
-#[derive(Template)]
-#[template(path = "generic_form.html")]
-pub struct GenericFormTemplate {
-    pub title: String,
-    pub action: String,
-    pub back_link: String,
-    pub fields: Vec<FormField>,
-    pub error: Option<String>,
-}
-
-// --- HELPER WRAPPERS ---
-
-pub struct HtmlTemplate<T>(pub T);
-
-impl<T> IntoResponse for HtmlTemplate<T>
-where
-    T: Template,
-{
-    fn into_response(self) -> axum::response::Response {
-        match self.0.render() {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template: {}", err),
-            )
-                .into_response(),
-        }
+impl<E: Into<anyhow::Error>> From<E> for AppError {
+    fn from(err: E) -> Self {
+        AppError::Internal(err.into())
     }
 }
 
-pub type AppResult<T> = Result<T, (StatusCode, String)>;
+pub type AppResult<T> = Result<T, AppError>;
 
-pub fn internal_error<E>(err: E) -> (StatusCode, String)
-where
-    E: std::fmt::Display,
-{
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+pub fn parse_ip_addr(value: &str) -> AppResult<IpAddr> {
+    IpAddr::from_str(value).map_err(|_| AppError::BadRequest("Invalid IP address".into()))
 }
 
-pub fn render_form<T: FormSchema>(back_link: &str) -> HtmlTemplate<GenericFormTemplate> {
-    HtmlTemplate(GenericFormTemplate {
-        title: T::form_title(),
-        action: T::form_action(),
-        back_link: back_link.to_string(),
-        fields: T::form_fields(),
-        error: None,
-    })
+pub fn parse_ip_status_or_default(value: Option<&str>) -> crate::models::IpStatus {
+    value
+        .and_then(|s| crate::models::IpStatus::from_str(s).ok())
+        .unwrap_or(crate::models::IpStatus::Active)
+}
+
+pub async fn enrich_services_with_status(
+    state: &AppState,
+    services: Vec<DashboardService>,
+) -> Vec<ServiceWithStatus> {
+    let statuses = state.service_statuses.read().await;
+    services
+        .into_iter()
+        .map(|s| {
+            let status = statuses
+                .get(&s.id)
+                .cloned()
+                .unwrap_or(ServiceStatus::Unknown);
+            let uptime_percentage = if s.total_checks > 0 {
+                (s.successful_checks as f64 / s.total_checks as f64) * 100.0
+            } else {
+                100.0
+            };
+            ServiceWithStatus {
+                service: s,
+                status: format!("{:?}", status).to_uppercase(),
+                uptime_percentage,
+            }
+        })
+        .collect()
 }
