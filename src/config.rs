@@ -64,8 +64,10 @@ impl Config {
                 discovery_url: {
                     let mut url = env::var("OIDC_CONFIGURATION_URL")
                         .or_else(|_| env::var("OIDC_ISSUER"))
-                        .context("OIDC_CONFIGURATION_URL or OIDC_ISSUER required when OIDC is enabled")?;
-                    
+                        .context(
+                            "OIDC_CONFIGURATION_URL or OIDC_ISSUER required when OIDC is enabled",
+                        )?;
+
                     if !url.ends_with("openid-configuration") {
                         if !url.ends_with('/') {
                             url.push('/');

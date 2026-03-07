@@ -14,10 +14,11 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 async fn active_admin_count(state: &AppState) -> Result<u64, AppError> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE role = $1 AND is_active = TRUE")
-        .bind(Role::Admin.as_str())
-        .fetch_one(&state.db.pool)
-        .await?;
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE role = $1 AND is_active = TRUE")
+            .bind(Role::Admin.as_str())
+            .fetch_one(&state.db.pool)
+            .await?;
     Ok(count as u64)
 }
 

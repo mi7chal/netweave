@@ -3,7 +3,8 @@ use anyhow::Result;
 use openidconnect::core::{CoreClient, CoreProviderMetadata, CoreResponseType};
 use openidconnect::reqwest::async_http_client;
 use openidconnect::{
-    AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, RedirectUrl, Scope, TokenResponse,
+    AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, RedirectUrl, Scope,
+    TokenResponse,
 };
 
 #[derive(Clone)]
@@ -15,16 +16,22 @@ impl OidcService {
     pub async fn from_config(config: &OidcConfig) -> Result<Self> {
         let mut issuer_str = config.discovery_url.clone();
         if issuer_str.ends_with(".well-known/openid-configuration") {
-            issuer_str = issuer_str.strip_suffix(".well-known/openid-configuration").unwrap().to_string();
+            issuer_str = issuer_str
+                .strip_suffix(".well-known/openid-configuration")
+                .unwrap()
+                .to_string();
         }
         if issuer_str.ends_with(".well-known/openid-configuration/") {
-            issuer_str = issuer_str.strip_suffix(".well-known/openid-configuration/").unwrap().to_string();
+            issuer_str = issuer_str
+                .strip_suffix(".well-known/openid-configuration/")
+                .unwrap()
+                .to_string();
         }
         // openidconnect-rs often requires a trailing slash for authentik issuers.
         if !issuer_str.ends_with('/') {
             issuer_str.push('/');
         }
-        
+
         let issuer_url = IssuerUrl::new(issuer_str)?;
         let client_id = ClientId::new(config.client_id.clone());
         let client_secret = ClientSecret::new(config.client_secret.clone());
@@ -32,7 +39,7 @@ impl OidcService {
 
         // Discover provider metadata, this automatically fetches the JWK set for signature verification
         let provider = CoreProviderMetadata::discover_async(issuer_url, async_http_client).await?;
-        
+
         let client = CoreClient::from_provider_metadata(provider, client_id, Some(client_secret))
             .set_redirect_uri(redirect_url);
 
