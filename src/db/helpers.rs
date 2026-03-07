@@ -7,5 +7,6 @@ use std::net::IpAddr;
 /// Replaces the repeated `IpNetwork::new(ip, ...).unwrap()` pattern.
 pub fn ip_to_network(ip: IpAddr) -> Result<ipnetwork::IpNetwork> {
     let prefix = if ip.is_ipv4() { 32 } else { 128 };
-    ipnetwork::IpNetwork::new(ip, prefix).map_err(|e| anyhow::anyhow!("invalid host network: {}", e))
+    ipnetwork::IpNetwork::new(ip, prefix)
+        .map_err(|e| anyhow::anyhow!("invalid host network: {}", e))
 }

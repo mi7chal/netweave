@@ -1,8 +1,8 @@
 use super::{CreateNetworkParams, Db};
 use crate::entities::networks;
 use crate::models::Network;
-use sea_orm::*;
 use sea_orm::QueryOrder;
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {

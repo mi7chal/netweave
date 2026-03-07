@@ -2,6 +2,12 @@
 name = "netweave"
 version = "0.1.0"
 edition = "2021"
+description = "Lightweight IPAM & HomeLab Dashboard"
+license = "Apache-2.0"
+repository = "https://github.com/mi7chal/netweave"
+homepage = "https://github.com/mi7chal/netweave"
+authors = ["mi7chal"]
+rust-version = "1.84"
 
 [dependencies]
 # Web Framework

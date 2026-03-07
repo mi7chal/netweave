@@ -9,7 +9,6 @@
 .DS_Store
 
 # Rust
-Cargo.lock
 **/*.rs.bk
 
 # Environment

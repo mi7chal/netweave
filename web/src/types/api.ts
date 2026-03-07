@@ -11,6 +11,7 @@ export interface Service {
     total_checks: number;
     successful_checks: number;
     uptime_percentage: number;
+    icon_url?: string | null;
 }
 
 export type ServiceStatus = "UP" | "DOWN" | "UNKNOWN" | "MAINTENANCE";
@@ -24,6 +25,7 @@ export interface CreateServicePayload {
     base_url: string;
     device_id?: string;
     is_public: boolean;
+    icon_url?: string | null;
 }
 
 // --- Devices & Networks ---
@@ -128,3 +130,22 @@ export interface Integration {
     status: string;
     last_sync_at: string | null;
 }
+
+export interface User {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface CreateUserPayload {
+    username: string;
+    email: string;
+    role: string;
+    password?: string;
+    is_active: boolean;
+}
+
+export type UpdateUserPayload = Partial<CreateUserPayload>;

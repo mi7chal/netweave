@@ -26,6 +26,7 @@ pub async fn get_public_settings(
 #[derive(Deserialize)]
 pub struct UpdateSettingsPayload {
     pub homepage_public: Option<bool>,
+    pub oidc_auto_import: Option<bool>,
 }
 
 pub async fn update_settings(
@@ -36,6 +37,12 @@ pub async fn update_settings(
         state
             .db
             .set_setting("homepage_public", &v.to_string())
+            .await?;
+    }
+    if let Some(v) = payload.oidc_auto_import {
+        state
+            .db
+            .set_setting("oidc_auto_import", &v.to_string())
             .await?;
     }
     Ok(Json(state.db.get_settings().await?))

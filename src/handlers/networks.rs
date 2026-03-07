@@ -1,10 +1,9 @@
 use crate::db::CreateIpParams;
-use crate::handlers::common::{AppError, AppResult, parse_ip_addr, parse_ip_status_or_default};
-use crate::models::{
-    CreateNetworkIpPayload, CreateNetworkPayload, Network, NetworkIpView,
-    UpdateNetworkPayload,
-};
+use crate::handlers::common::{parse_ip_addr, parse_ip_status_or_default, AppError, AppResult};
 use crate::models::types::parse_optional_mac;
+use crate::models::{
+    CreateNetworkIpPayload, CreateNetworkPayload, Network, NetworkIpView, UpdateNetworkPayload,
+};
 use crate::AppState;
 use axum::{
     extract::{Path, State},

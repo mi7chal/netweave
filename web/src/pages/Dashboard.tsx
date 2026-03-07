@@ -101,13 +101,15 @@ function ServiceCard({ service }: { service: Service }) {
 
     // 1. First attempt: High quality homelab icons from walkxcode repo
     const normalizedName = service.name.toLowerCase().replace(/\s+/g, '-');
-    const primaryIcon = `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${normalizedName}.png`;
+    const walkxcodeIcon = `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${normalizedName}.png`;
 
-    const [imgUrl, setImgUrl] = useState(primaryIcon);
+    const [imgUrl, setImgUrl] = useState(service.icon_url || walkxcodeIcon);
     const [imgError, setImgError] = useState(false);
 
     const handleImgError = () => {
-        if (imgUrl === primaryIcon) {
+        if (service.icon_url && imgUrl === service.icon_url) {
+            setImgUrl(walkxcodeIcon);
+        } else if (imgUrl === walkxcodeIcon) {
             // 2. Second attempt: Attempt to retrieve direct local favicon.ico
             setImgUrl(`${urlWithProto}/favicon.ico`);
         } else {

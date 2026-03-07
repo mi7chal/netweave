@@ -55,7 +55,10 @@ async fn check_all_services(state: &AppState, client: &reqwest::Client) -> anyho
     Ok(())
 }
 
-async fn check_service_status_with_retry(client: &reqwest::Client, url: &str) -> (ServiceStatus, bool) {
+async fn check_service_status_with_retry(
+    client: &reqwest::Client,
+    url: &str,
+) -> (ServiceStatus, bool) {
     for attempt in 1..=RETRY_ATTEMPTS {
         match client.get(url).send().await {
             Ok(response) if response.status().is_success() => return (ServiceStatus::Up, true),

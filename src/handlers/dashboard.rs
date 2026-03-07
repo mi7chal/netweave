@@ -1,4 +1,4 @@
-use crate::handlers::common::{AppResult, ServiceWithStatus, enrich_services_with_status};
+use crate::handlers::common::{enrich_services_with_status, AppResult, ServiceWithStatus};
 use crate::AppState;
 use axum::{extract::State, Json};
 use serde::Serialize;

@@ -50,6 +50,26 @@ pub struct CreateServicePayload {
     pub device_id: Option<Uuid>,
     #[serde(default)]
     pub is_public: bool,
+    #[serde(default, deserialize_with = "validation::deserialize_optional_string")]
+    pub icon_url: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct CreateUserPayload {
+    pub username: String,
+    pub email: String,
+    pub role: String,
+    pub password: Option<String>,
+    pub is_active: bool,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct UpdateUserPayload {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub role: Option<String>,
+    pub password: Option<String>,
+    pub is_active: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -174,4 +194,3 @@ mod tests {
         assert_eq!(payload.interface_type, "PHYSICAL");
     }
 }
-

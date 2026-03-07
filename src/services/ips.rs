@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::models::{UpdateIpPayload, DeviceIpView};
+use crate::models::{DeviceIpView, UpdateIpPayload};
 use crate::AppState;
 use anyhow::Result;
 use std::net::IpAddr;

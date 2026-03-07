@@ -1,11 +1,22 @@
 use super::types::{DeviceType, IpStatus};
 use chrono::{DateTime, Utc};
+use ipnetwork::IpNetwork;
 use mac_address::MacAddress;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use ipnetwork::IpNetwork;
 use std::net::IpAddr;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub auth_subject_id: Option<String>,
+    pub role: String,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Network {
@@ -64,6 +75,7 @@ pub struct Service {
     pub total_checks: Option<i32>,
     pub successful_checks: Option<i32>,
     pub is_public: Option<bool>,
+    pub icon_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +88,7 @@ pub struct DashboardService {
     pub successful_checks: i32,
     pub device_hostname: String,
     pub device_id: Option<Uuid>,
+    pub icon_url: Option<String>,
 }
 
 /// Dashboard/service list item with live status and uptime (unifies dashboard and services handlers).
@@ -142,6 +155,20 @@ pub struct InterfaceWithIps {
 // From impls: SeaORM entity → API model (eliminates field-by-field mapping)
 // ---------------------------------------------------------------------------
 
+impl From<crate::entities::users::Model> for User {
+    fn from(u: crate::entities::users::Model) -> Self {
+        Self {
+            id: u.id,
+            username: u.username,
+            email: u.email,
+            auth_subject_id: u.auth_subject_id,
+            role: u.role,
+            is_active: u.is_active,
+            created_at: u.created_at.into(),
+        }
+    }
+}
+
 impl From<crate::entities::networks::Model> for Network {
     fn from(n: crate::entities::networks::Model) -> Self {
         Self {
@@ -185,6 +212,7 @@ impl From<crate::entities::services::Model> for Service {
             total_checks: s.total_checks,
             successful_checks: s.successful_checks,
             is_public: s.is_public,
+            icon_url: s.icon_url,
         }
     }
 }

@@ -10,16 +10,19 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboard, LogOut, Network, Server, Settings, Settings2, Zap } from "lucide-react"
+import { LayoutDashboard, KeyRound, LogOut, Network, Server, Settings, Settings2, Users, Zap } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
+import { useState } from "react"
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog"
 
 const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
     { name: "Services", href: "/services", icon: Zap, adminOnly: false },
     { name: "Networks", href: "/networks", icon: Network, adminOnly: true },
     { name: "Devices", href: "/devices", icon: Server, adminOnly: true },
+    { name: "Users", href: "/users", icon: Users, adminOnly: true },
     { name: "Integrations", href: "/integrations", icon: Settings2, adminOnly: true },
     { name: "Settings", href: "/settings", icon: Settings, adminOnly: true },
 ];
@@ -27,6 +30,7 @@ const navigation = [
 export function AppSidebar() {
     const location = useLocation();
     const { user, isAdmin, logout } = useAuth();
+    const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
     const visibleNav = navigation.filter(item => !item.adminOnly || isAdmin);
 
@@ -73,16 +77,29 @@ export function AppSidebar() {
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-border/10 space-y-2">
                 {user && (
-                    <button
-                        onClick={async () => { await logout(); window.location.href = '/login'; }}
-                        className="group flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-300 hover:bg-destructive/10 border border-transparent hover:border-destructive/20"
-                    >
-                        <div className="flex flex-col text-left">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{user.role}</span>
-                            <span className="text-sm font-medium text-muted-foreground group-hover:text-destructive transition-colors">{user.username}</span>
-                        </div>
-                        <LogOut className="h-4 w-4 text-muted-foreground group-hover:text-destructive group-hover:scale-110 transition-all duration-300" />
-                    </button>
+                    <>
+                        <button
+                            onClick={() => setChangePasswordOpen(true)}
+                            className="group flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-300 hover:bg-primary/10 border border-transparent hover:border-primary/20"
+                        >
+                            <div className="flex flex-col text-left">
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{user.role}</span>
+                                <span className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">{user.username}</span>
+                            </div>
+                            <KeyRound className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:scale-110 transition-all duration-300" />
+                        </button>
+                        <button
+                            onClick={async () => { await logout(); window.location.href = '/login'; }}
+                            className="group flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-300 hover:bg-destructive/10 border border-transparent hover:border-destructive/20"
+                        >
+                            <span className="text-sm font-medium text-muted-foreground group-hover:text-destructive transition-colors">Sign out</span>
+                            <LogOut className="h-4 w-4 text-muted-foreground group-hover:text-destructive group-hover:scale-110 transition-all duration-300" />
+                        </button>
+                        <ChangePasswordDialog
+                            open={changePasswordOpen}
+                            onOpenChange={setChangePasswordOpen}
+                        />
+                    </>
                 )}
             </SidebarFooter>
         </Sidebar>

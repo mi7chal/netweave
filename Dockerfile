@@ -42,9 +42,16 @@ RUN touch src/main.rs src/lib.rs && cargo build --release
 # ============================================
 FROM debian:bookworm-slim AS runtime
 
+LABEL org.opencontainers.image.title="NetWeave" \
+    org.opencontainers.image.description="Lightweight IPAM & HomeLab Dashboard" \
+    org.opencontainers.image.url="https://github.com/mi7chal/netweave" \
+    org.opencontainers.image.source="https://github.com/mi7chal/netweave" \
+    org.opencontainers.image.licenses="Apache-2.0"
+
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -r -s /bin/false netweave
@@ -68,5 +75,8 @@ USER netweave
 EXPOSE 8789
 
 ENV RUST_LOG=info
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8789/api/auth/check-oidc || exit 1
 
 CMD ["./netweave"]

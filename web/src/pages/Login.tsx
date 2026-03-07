@@ -27,6 +27,16 @@ export function Login() {
         checkOidc();
     }, []);
 
+    // Check for auth_failed error in URL
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('error') === 'auth_failed') {
+            setError('Authentication failed. The account might be inactive or auto-import might be disabled.');
+            // Clean up the URL to prevent the error state from persisting on refresh
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
+
     // Redirect if already authenticated
     useEffect(() => {
         if (isAuthenticated) {

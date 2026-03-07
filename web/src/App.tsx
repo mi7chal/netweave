@@ -7,7 +7,9 @@ import { Services } from '@/pages/Services';
 import { Networks } from '@/pages/Networks';
 import { Devices } from '@/pages/Devices';
 import { DeviceDetailsPage } from '@/pages/DeviceDetails';
+import { Users } from '@/pages/Users';
 import { Settings } from '@/pages/Settings';
+import { AuthCallback } from '@/pages/AuthCallback';
 import { useState, useEffect } from 'react';
 import { fetchApi } from '@/lib/api-client';
 
@@ -40,12 +42,14 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute allowPublic={homepagePublic}><Dashboard /></ProtectedRoute>} />
       <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
       <Route path="/networks" element={<ProtectedRoute adminOnly><Networks /></ProtectedRoute>} />
       <Route path="/devices" element={<ProtectedRoute adminOnly><Devices /></ProtectedRoute>} />
       <Route path="/devices/:id" element={<ProtectedRoute adminOnly><DeviceDetailsPage /></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute adminOnly><Integrations /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
     </Routes>

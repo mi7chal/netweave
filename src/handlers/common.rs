@@ -24,6 +24,7 @@ pub enum AppError {
     Forbidden(String),
     TooManyRequests(String),
     ServiceUnavailable(String),
+    Conflict(String),
 }
 
 impl IntoResponse for AppError {
@@ -42,6 +43,7 @@ impl IntoResponse for AppError {
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             AppError::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
             AppError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
         };
         (status, Json(ErrorResponse { error: msg })).into_response()
     }
@@ -73,7 +75,10 @@ pub async fn enrich_services_with_status(
     services
         .into_iter()
         .map(|s| {
-            let status = statuses.get(&s.id).cloned().unwrap_or(ServiceStatus::Unknown);
+            let status = statuses
+                .get(&s.id)
+                .cloned()
+                .unwrap_or(ServiceStatus::Unknown);
             let uptime_percentage = if s.total_checks > 0 {
                 (s.successful_checks as f64 / s.total_checks as f64) * 100.0
             } else {

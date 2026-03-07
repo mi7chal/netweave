@@ -81,7 +81,9 @@ pub async fn update_interface(
 ) -> AppResult<Json<Interface>> {
     validation::validate_name(&payload.name, "Interface name", 50)
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
-    Ok(Json(state.db.update_interface(interface_id, payload).await?))
+    Ok(Json(
+        state.db.update_interface(interface_id, payload).await?,
+    ))
 }
 
 pub async fn delete_interface(

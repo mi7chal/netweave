@@ -8,6 +8,7 @@ pub struct UserCredentials {
     pub username: String,
     pub role: String,
     pub password_hash: Option<String>,
+    pub is_active: bool,
 }
 
 impl Db {
@@ -55,6 +56,36 @@ impl Db {
             username: u.username,
             role: u.role,
             password_hash: u.password_hash,
+            is_active: u.is_active,
         }))
+    }
+
+    pub async fn get_user_by_id(&self, id: Uuid) -> Result<Option<UserCredentials>, anyhow::Error> {
+        let user = users::Entity::find_by_id(id).one(&self.conn).await?;
+
+        Ok(user.map(|u| UserCredentials {
+            id: u.id,
+            username: u.username,
+            role: u.role,
+            password_hash: u.password_hash,
+            is_active: u.is_active,
+        }))
+    }
+
+    pub async fn update_user_password_hash(
+        &self,
+        id: Uuid,
+        password_hash: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let user = users::Entity::find_by_id(id).one(&self.conn).await?;
+        let Some(user) = user else {
+            return Ok(false);
+        };
+
+        let mut user = user.into_active_model();
+        user.password_hash = Set(Some(password_hash.to_string()));
+        user.update(&self.conn).await?;
+
+        Ok(true)
     }
 }

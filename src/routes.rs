@@ -212,6 +212,20 @@ fn admin_settings_routes() -> Router<AppState> {
     )
 }
 
+fn admin_user_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/users",
+            get(handlers::list_users).post(handlers::create_user),
+        )
+        .route(
+            "/users/:id",
+            get(handlers::get_user)
+                .put(handlers::update_user)
+                .delete(handlers::delete_user),
+        )
+}
+
 fn admin_routes() -> Router<AppState> {
     Router::new()
         .merge(admin_service_routes())
@@ -219,6 +233,7 @@ fn admin_routes() -> Router<AppState> {
         .merge(admin_network_routes())
         .merge(admin_integration_routes())
         .merge(admin_settings_routes())
+        .merge(admin_user_routes())
         .route_layer(middleware::from_fn(require_admin))
 }
 

@@ -23,8 +23,12 @@ impl Db {
                 is_public: service.is_public.unwrap_or(false),
                 total_checks: service.total_checks.unwrap_or(0),
                 successful_checks: service.successful_checks.unwrap_or(0),
-                device_hostname: device.as_ref().map(|d| d.hostname.clone()).unwrap_or_default(),
+                device_hostname: device
+                    .as_ref()
+                    .map(|d| d.hostname.clone())
+                    .unwrap_or_default(),
                 device_id: device.map(|d| d.id),
+                icon_url: service.icon_url,
             })
             .collect();
 
@@ -47,6 +51,7 @@ impl Db {
             base_url: Set(params.base_url),
             device_id: Set(params.device_id),
             is_public: Set(Some(params.is_public)),
+            icon_url: Set(params.icon_url),
             ..Default::default()
         };
 
@@ -69,6 +74,7 @@ impl Db {
         service.base_url = Set(params.base_url);
         service.device_id = Set(params.device_id);
         service.is_public = Set(Some(params.is_public));
+        service.icon_url = Set(params.icon_url);
 
         service.update(&self.conn).await?;
         Ok(true)

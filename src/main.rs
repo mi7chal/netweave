@@ -50,9 +50,9 @@ async fn main() {
     let state = netweave::create_state(config.clone(), pool, oidc)
         .await
         .unwrap_or_else(|e| {
-        eprintln!("ERROR: {}", e);
-        std::process::exit(1);
-    });
+            eprintln!("ERROR: {}", e);
+            std::process::exit(1);
+        });
 
     tokio::spawn(netweave::monitoring::start_monitoring(state.clone()));
     tokio::spawn(netweave::integrations::run_sync_task(state.clone()));
@@ -65,10 +65,12 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("Server listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap_or_else(|e| {
-        eprintln!("ERROR: Failed to bind to {}: {}", addr, e);
-        std::process::exit(1);
-    });
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("ERROR: Failed to bind to {}: {}", addr, e);
+            std::process::exit(1);
+        });
 
     if let Err(e) = axum::serve(
         listener,

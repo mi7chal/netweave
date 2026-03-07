@@ -39,7 +39,11 @@ async fn check_oidc_returns_200_and_json() {
         .unwrap();
     let response = service.ready().await.unwrap().call(req).await.unwrap();
 
-    assert_eq!(response.status(), 200, "GET /auth/check-oidc should return 200");
+    assert_eq!(
+        response.status(),
+        200,
+        "GET /auth/check-oidc should return 200"
+    );
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();

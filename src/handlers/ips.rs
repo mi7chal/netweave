@@ -1,8 +1,8 @@
-use crate::db::CreateIpParams;
 use crate::db::helpers;
-use crate::handlers::common::{AppError, AppResult, parse_ip_addr, parse_ip_status_or_default};
-use crate::models::{AssignIpPayload, IpStatus};
+use crate::db::CreateIpParams;
+use crate::handlers::common::{parse_ip_addr, parse_ip_status_or_default, AppError, AppResult};
 use crate::models::types::parse_optional_mac;
+use crate::models::{AssignIpPayload, IpStatus};
 use crate::AppState;
 use axum::{
     extract::{Path, State},
@@ -76,14 +76,19 @@ pub async fn update_ip(
         .ip_address
         .as_ref()
         .map(|s| parse_ip_addr(s))
-        .transpose()
-        ?;
+        .transpose()?;
 
     let mac_address = payload.mac_address.as_ref().map(|m| {
-        if m.is_empty() { None } else { mac_address::MacAddress::from_str(m).ok() }
+        if m.is_empty() {
+            None
+        } else {
+            mac_address::MacAddress::from_str(m).ok()
+        }
     });
 
-    let status = payload.status.as_deref()
+    let status = payload
+        .status
+        .as_deref()
         .and_then(|s| IpStatus::from_str(s).ok());
 
     let existing_ip = state
@@ -130,11 +135,7 @@ pub async fn update_ip(
 
     if let Some(ref old_ip) = existing_ip {
         crate::services::ip_service::sync_after_update_ip(
-            &state,
-            device_id,
-            old_ip,
-            &payload,
-            ip_address,
+            &state, device_id, old_ip, &payload, ip_address,
         )
         .await;
     }

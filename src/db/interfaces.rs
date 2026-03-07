@@ -1,10 +1,10 @@
 use super::Db;
 use crate::entities::interfaces;
 use crate::models::{CreateInterfacePayload, Interface};
-use sea_orm::*;
-use uuid::Uuid;
 use chrono::Utc;
+use sea_orm::*;
 use std::str::FromStr;
+use uuid::Uuid;
 impl Db {
     pub async fn create_interface(
         &self,
@@ -13,7 +13,7 @@ impl Db {
     ) -> Result<Uuid, anyhow::Error> {
         let new_id = Uuid::now_v7();
         let mac_str = params.mac_address.clone();
-        
+
         let sql = r#"
             INSERT INTO interfaces (id, device_id, name, mac_address, type, created_at)
             VALUES ($1, $2, $3, CAST($4 AS macaddr), $5, $6)

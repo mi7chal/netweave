@@ -75,6 +75,11 @@ export function ServiceDialog({ open, onOpenChange, onSaved, initialData }: Serv
                         </div>
                         <Switch checked={formData.is_public} onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })} />
                     </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="icon_url" className="text-sm font-medium">Icon URL (Optional)</Label>
+                        <Input id="icon_url" placeholder="https://example.com/icon.png" value={formData.icon_url || ""} onChange={(e) => setFormData({ ...formData, icon_url: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
+                        <p className="text-xs text-muted-foreground">Overrides the auto-discovered icon if provided.</p>
+                    </div>
                 </div>
                 <DialogFooter className="border-t border-border/20 pt-4 mt-2">
                     <Button variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>

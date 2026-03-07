@@ -1,8 +1,8 @@
+use sea_orm::sea_query::{ArrayType, ColumnType, Nullable, ValueType, ValueTypeErr};
+use sea_orm::{DbErr, DeriveActiveEnum, EnumIter, TryGetError, Value};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use sea_orm::{TryGetError, Value, DbErr, EnumIter, DeriveActiveEnum};
-use sea_orm::sea_query::{ColumnType, ValueType, ValueTypeErr, Nullable, ArrayType};
 
 /// SeaORM-compatible wrapper for PostgreSQL native `MACADDR` columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,7 +21,10 @@ impl From<MacAddress> for Value {
 }
 
 impl sea_orm::TryGetable for MacAddress {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> Result<Self, TryGetError> {
+    fn try_get_by<I: sea_orm::ColIdx>(
+        res: &sea_orm::QueryResult,
+        index: I,
+    ) -> Result<Self, TryGetError> {
         let val: Option<String> = res.try_get_by(index)?;
         match val {
             Some(v) => mac_address::MacAddress::from_str(&v)
@@ -35,18 +38,28 @@ impl sea_orm::TryGetable for MacAddress {
 impl ValueType for MacAddress {
     fn try_from(v: Value) -> Result<Self, ValueTypeErr> {
         match v {
-            Value::String(Some(s)) => mac_address::MacAddress::from_str(&s).map(MacAddress).map_err(|_| ValueTypeErr),
+            Value::String(Some(s)) => mac_address::MacAddress::from_str(&s)
+                .map(MacAddress)
+                .map_err(|_| ValueTypeErr),
             _ => Err(ValueTypeErr),
         }
     }
 
-    fn type_name() -> String { "MacAddress".to_owned() }
-    fn array_type() -> ArrayType { ArrayType::String }
-    fn column_type() -> ColumnType { ColumnType::custom("macaddr") }
+    fn type_name() -> String {
+        "MacAddress".to_owned()
+    }
+    fn array_type() -> ArrayType {
+        ArrayType::String
+    }
+    fn column_type() -> ColumnType {
+        ColumnType::custom("macaddr")
+    }
 }
 
 impl Nullable for MacAddress {
-    fn null() -> Value { Value::String(None) }
+    fn null() -> Value {
+        Value::String(None)
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,8 +96,14 @@ impl From<&str> for DeviceType {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Text", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumIter, DeriveActiveEnum,
+)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Text",
+    rename_all = "SCREAMING_SNAKE_CASE"
+)]
 pub enum IpStatus {
     #[sea_orm(string_value = "ACTIVE")]
     #[default]
@@ -181,7 +200,13 @@ mod tests {
 
     #[test]
     fn ip_status_serde_roundtrip() {
-        for status in [IpStatus::Active, IpStatus::Reserved, IpStatus::Dhcp, IpStatus::Deprecated, IpStatus::Free] {
+        for status in [
+            IpStatus::Active,
+            IpStatus::Reserved,
+            IpStatus::Dhcp,
+            IpStatus::Deprecated,
+            IpStatus::Free,
+        ] {
             let json = serde_json::to_string(&status).unwrap();
             let parsed: IpStatus = serde_json::from_str(&json).unwrap();
             assert_eq!(status, parsed);
@@ -190,17 +215,20 @@ mod tests {
 
     #[test]
     fn mac_address_display() {
-        let mac = MacAddress(mac_address::MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]));
+        let mac = MacAddress(mac_address::MacAddress::new([
+            0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+        ]));
         let s = mac.to_string().to_uppercase();
         assert!(s.contains("AA"));
     }
 
     #[test]
     fn mac_address_serde_roundtrip() {
-        let mac = MacAddress(mac_address::MacAddress::new([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));
+        let mac = MacAddress(mac_address::MacAddress::new([
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+        ]));
         let json = serde_json::to_string(&mac).unwrap();
         let parsed: MacAddress = serde_json::from_str(&json).unwrap();
         assert_eq!(mac, parsed);
     }
 }
-

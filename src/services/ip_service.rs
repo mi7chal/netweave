@@ -70,7 +70,10 @@ pub async fn sync_after_update_ip(
             if let Some(ref om) = old_mac_c {
                 if *om != mac || old_ip_str != target_ip_c {
                     crate::integrations::trigger_static_lease_delete(
-                        &s, om, &old_ip_str, &hostname_c,
+                        &s,
+                        om,
+                        &old_ip_str,
+                        &hostname_c,
                     )
                     .await;
                 }

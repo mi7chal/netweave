@@ -14,6 +14,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isAdmin: boolean;
     login: (username: string, password: string) => Promise<void>;
+    changePassword: (newPassword: string, currentPassword?: string) => Promise<void>;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
 }
@@ -46,6 +47,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await checkAuth();
     };
 
+    const changePassword = async (newPassword: string, currentPassword?: string) => {
+        await fetchApi('/api/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({
+                new_password: newPassword,
+                current_password: currentPassword,
+            }),
+        });
+    };
+
     const logout = async () => {
         try {
             await fetchApi('/api/auth/logout', { method: 'POST' });
@@ -62,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isAuthenticated: !!user,
             isAdmin: user?.role === 'ADMIN',
             login,
+            changePassword,
             logout,
             checkAuth,
         }}>

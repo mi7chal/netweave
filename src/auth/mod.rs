@@ -101,6 +101,12 @@ pub struct OidcStatusResponse {
     pub oidc_enabled: bool,
 }
 
+#[derive(Deserialize)]
+pub struct ChangePasswordPayload {
+    pub current_password: Option<String>,
+    pub new_password: String,
+}
+
 pub async fn login_username_password(
     State(state): State<AppState>,
     session: Session,
@@ -114,6 +120,12 @@ pub async fn login_username_password(
 
     match state.db.get_user_by_username(&payload.username).await {
         Ok(Some(creds)) => {
+            if !creds.is_active {
+                return Err(AppError::Unauthorized(
+                    "Invalid username or password".into(),
+                ));
+            }
+
             // OIDC-only user without a password will have an empty or null password_hash
             let Some(password_hash) = creds.password_hash.filter(|h| !h.is_empty()) else {
                 return Err(AppError::Unauthorized(
@@ -164,6 +176,65 @@ pub async fn me_handler(session: Session) -> AppResult<Json<AuthUser>> {
         Some(user) => Ok(Json(user)),
         None => Err(AppError::Unauthorized("Not authenticated".into())),
     }
+}
+
+pub async fn change_password_handler(
+    State(state): State<AppState>,
+    session: Session,
+    Json(payload): Json<ChangePasswordPayload>,
+) -> AppResult<Json<AuthStatusResponse>> {
+    if payload.new_password.trim().is_empty() {
+        return Err(AppError::BadRequest("New password cannot be empty".into()));
+    }
+
+    let Some(auth_user) = session
+        .get::<AuthUser>(AUTH_SESSION_KEY)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!("Failed to read auth session: {}", e);
+            None
+        })
+    else {
+        return Err(AppError::Unauthorized("Not authenticated".into()));
+    };
+
+    let user = state
+        .db
+        .get_user_by_id(auth_user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+
+    if !user.is_active {
+        return Err(AppError::Forbidden("User is disabled".into()));
+    }
+
+    // Require current password only when an existing local password is set.
+    if let Some(existing_hash) = user.password_hash.filter(|h| !h.is_empty()) {
+        let Some(current_password) = payload.current_password.as_deref() else {
+            return Err(AppError::BadRequest("Current password is required".into()));
+        };
+        if !bcrypt::verify(current_password, &existing_hash).unwrap_or(false) {
+            return Err(AppError::Unauthorized(
+                "Current password is incorrect".into(),
+            ));
+        }
+    }
+
+    let new_hash =
+        hash(payload.new_password, DEFAULT_COST).map_err(|e| AppError::Internal(e.into()))?;
+    let updated = state
+        .db
+        .update_user_password_hash(auth_user.id, &new_hash)
+        .await?;
+
+    if !updated {
+        return Err(AppError::NotFound("User not found".into()));
+    }
+
+    Ok(Json(AuthStatusResponse {
+        status: "success",
+        message: "Password changed successfully",
+    }))
 }
 
 pub async fn check_oidc_handler(
@@ -229,7 +300,7 @@ pub async fn oidc_callback(
             None
         });
     if stored_csrf.as_deref() != Some(&params.state) {
-        return Redirect::to("/?error=auth_failed").into_response();
+        return Redirect::to("/login?error=auth_failed").into_response();
     }
 
     let stored_nonce = session
@@ -241,14 +312,14 @@ pub async fn oidc_callback(
         });
     let nonce = match stored_nonce {
         Some(n) => openidconnect::Nonce::new(n),
-        None => return Redirect::to("/?error=auth_failed").into_response(),
+        None => return Redirect::to("/login?error=auth_failed").into_response(),
     };
 
     let (claims, _id_token) = match oidc.exchange_code(params.code, &nonce).await {
         Ok(res) => res,
         Err(e) => {
             tracing::error!("OIDC code exchange failed: {}", e);
-            return Redirect::to("/?error=auth_failed").into_response();
+            return Redirect::to("/login?error=auth_failed").into_response();
         }
     };
 
@@ -262,34 +333,56 @@ pub async fn oidc_callback(
         .unwrap_or_else(|| email.clone());
 
     let user = match state.db.get_user_by_username(&username).await {
+        Ok(Some(creds)) if !creds.is_active => {
+            tracing::warn!("OIDC login rejected for inactive user '{}'", username);
+            return Redirect::to("/login?error=auth_failed").into_response();
+        }
         Ok(Some(creds)) => AuthUser {
             id: creds.id,
             username: creds.username,
             role: Role::from_str(&creds.role).unwrap_or(Role::Viewer),
         },
         Ok(None) => {
-            let id = Uuid::now_v7();
+            let auto_import = state
+                .db
+                .get_setting("oidc_auto_import")
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "false".to_string());
+
+            if auto_import != "true" {
+                tracing::warn!(
+                    "OIDC auto-import is disabled. Rejecting login for new user '{}'",
+                    username
+                );
+                return Redirect::to("/login?error=auth_failed").into_response();
+            }
+
             let role = Role::Viewer;
 
-            if let Err(e) = state
+            let id = match state
                 .db
                 .create_user(&username, &email, None, role.as_str())
                 .await
             {
-                tracing::error!("Failed to create OIDC user '{}': {}", username, e);
-                return Redirect::to("/?error=auth_failed").into_response();
-            }
+                Ok(id) => id,
+                Err(e) => {
+                    tracing::error!("Failed to create OIDC user '{}': {}", username, e);
+                    return Redirect::to("/login?error=auth_failed").into_response();
+                }
+            };
             AuthUser { id, username, role }
         }
         Err(e) => {
             tracing::error!("Database error during OIDC callback: {}", e);
-            return Redirect::to("/?error=auth_failed").into_response();
+            return Redirect::to("/login?error=auth_failed").into_response();
         }
     };
 
     if let Err(e) = session.insert(AUTH_SESSION_KEY, &user).await {
         tracing::error!("Failed to set session during OIDC callback: {}", e);
-        return Redirect::to("/?error=auth_failed").into_response();
+        return Redirect::to("/login?error=auth_failed").into_response();
     }
 
     Redirect::to("/").into_response()
@@ -307,6 +400,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/me", get(me_handler))
         .route("/check-oidc", get(check_oidc_handler))
         .route("/login", get(oidc_login).post(login_username_password))
+        .route(
+            "/change-password",
+            axum::routing::post(change_password_handler),
+        )
         .route("/callback", get(oidc_callback))
         .route("/logout", get(logout_handler).post(logout_handler))
         .with_state(state)

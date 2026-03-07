@@ -1,0 +1,45 @@
+# ============================================
+# NetWeave — Production Deployment
+# ============================================
+# Usage: docker compose up -d
+#
+# Copy .env.example to .env and configure before starting.
+# See README.md for full configuration reference.
+
+services:
+  app:
+    image: mi7chal/netweave:latest
+    container_name: netweave
+    environment:
+      DATABASE_URL: "postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}"
+      DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-adminpassword}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SESSION_SECRET: ${SESSION_SECRET}
+      RUST_LOG: ${RUST_LOG:-info}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
+    ports:
+      - "${APP_PORT:-5173}:5173"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: netweave_db
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - netweave_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  netweave_data:

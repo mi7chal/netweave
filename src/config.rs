@@ -61,12 +61,21 @@ impl Config {
                     .context("OIDC_CLIENT_ID required when OIDC is enabled")?,
                 client_secret: env::var("OIDC_CLIENT_SECRET")
                     .context("OIDC_CLIENT_SECRET required when OIDC is enabled")?,
-                discovery_url: env::var("OIDC_DISCOVERY_URL")
-                    .or_else(|_| env::var("OIDC_ISSUER"))
-                    .context("OIDC_DISCOVERY_URL or OIDC_ISSUER required when OIDC is enabled")?,
-                redirect_uri: env::var("OIDC_REDIRECT_URI")
-                    .or_else(|_| env::var("OIDC_REDIRECT_URL"))
-                    .unwrap_or_else(|_| "http://localhost:8789/auth/oidc/callback".to_string()),
+                discovery_url: {
+                    let mut url = env::var("OIDC_CONFIGURATION_URL")
+                        .or_else(|_| env::var("OIDC_ISSUER"))
+                        .context("OIDC_CONFIGURATION_URL or OIDC_ISSUER required when OIDC is enabled")?;
+                    
+                    if !url.ends_with("openid-configuration") {
+                        if !url.ends_with('/') {
+                            url.push('/');
+                        }
+                        url.push_str(".well-known/openid-configuration");
+                    }
+                    url
+                },
+                redirect_uri: env::var("OIDC_REDIRECT_URL")
+                    .context("OIDC_REDIRECT_URL required when OIDC is enabled")?,
             })
         } else {
             None

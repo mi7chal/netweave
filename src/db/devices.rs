@@ -3,9 +3,9 @@ use crate::entities::{devices, interfaces, ip_addresses, networks, services};
 use crate::models::{
     CreateDevicePayload, Device, DeviceDetails, DeviceListView, DeviceType, InterfaceWithIps,
 };
+use sea_orm::sea_query::{Alias, Expr};
 use sea_orm::*;
 use sea_orm::{QueryOrder, QuerySelect};
-use sea_orm::sea_query::{Alias, Expr};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ impl Db {
 
         if !search.is_empty() {
             let s = format!("%{}%", search);
-            
+
             // Allow casting INET/MACADDR to text for LIKE search
             let mac_cast = Expr::col(interfaces::Column::MacAddress).cast_as(Alias::new("text"));
             let ip_cast = Expr::col(ip_addresses::Column::IpAddress).cast_as(Alias::new("text"));
@@ -28,11 +28,11 @@ impl Db {
             query = query
                 .join(
                     sea_orm::JoinType::LeftJoin,
-                    devices::Relation::Interfaces.def()
+                    devices::Relation::Interfaces.def(),
                 )
                 .join(
                     sea_orm::JoinType::LeftJoin,
-                    ip_addresses::Relation::Interface.def().rev()
+                    ip_addresses::Relation::Interface.def().rev(),
                 )
                 .filter(
                     Condition::any()
@@ -40,7 +40,7 @@ impl Db {
                         .add(devices::Column::Type.like(&s))
                         .add(devices::Column::OsInfo.like(&s))
                         .add(mac_cast.clone().like(&s))
-                        .add(ip_cast.clone().like(&s))
+                        .add(ip_cast.clone().like(&s)),
                 )
                 // Group by to avoid duplicates since we're joining 1-to-many relationships
                 .group_by(devices::Column::Id);
@@ -81,7 +81,9 @@ impl Db {
 
         // Prefer static IPs when choosing the primary IP for display
         for ip in &ips_models {
-            let Some(iface_id) = ip.interface_id else { continue };
+            let Some(iface_id) = ip.interface_id else {
+                continue;
+            };
             let existing = interface_ip_map.get(&iface_id);
             let should_insert = match existing {
                 None => true,
@@ -96,13 +98,12 @@ impl Db {
             .into_iter()
             .map(|d| {
                 let dt: DeviceType = d.r#type.as_str().into();
-                
-                let primary_interface = device_interface_map.get(&d.id);
-                let mac_address = primary_interface
-                    .and_then(|i| i.mac_address.as_ref().map(|m| m.0));
 
-                let primary_ip_record = primary_interface
-                    .and_then(|i| interface_ip_map.get(&i.id));
+                let primary_interface = device_interface_map.get(&d.id);
+                let mac_address =
+                    primary_interface.and_then(|i| i.mac_address.as_ref().map(|m| m.0));
+
+                let primary_ip_record = primary_interface.and_then(|i| interface_ip_map.get(&i.id));
 
                 let primary_ip = primary_ip_record.map(|ip| ip.ip_address.ip());
                 let is_static = primary_ip_record.map(|ip| ip.is_static);
@@ -141,29 +142,35 @@ impl Db {
         // Fetch all IPs for these interfaces
         let interface_ids: Vec<Uuid> = interfaces_models.iter().map(|i| i.id).collect();
         let mut ips_map: HashMap<Uuid, Vec<crate::models::IpAddress>> = HashMap::new();
- 
+
         if !interface_ids.is_empty() {
-             let ips_models = ip_addresses::Entity::find()
+            let ips_models = ip_addresses::Entity::find()
                 .filter(ip_addresses::Column::InterfaceId.is_in(interface_ids))
                 .all(&self.conn)
                 .await?;
-            
+
             for ip in ips_models {
                 if let Some(interface_id) = ip.interface_id {
-                    ips_map.entry(interface_id).or_default().push(crate::models::IpAddress::from(ip));
+                    ips_map
+                        .entry(interface_id)
+                        .or_default()
+                        .push(crate::models::IpAddress::from(ip));
                 }
             }
         }
 
         let device_entity = Device::from(d);
 
-        let interfaces_with_ips = interfaces_models.into_iter().map(|i| {
-            let iface_id = i.id;
-            InterfaceWithIps {
-                interface: crate::models::Interface::from(i),
-                ips: ips_map.remove(&iface_id).unwrap_or_default(),
-            }
-        }).collect();
+        let interfaces_with_ips = interfaces_models
+            .into_iter()
+            .map(|i| {
+                let iface_id = i.id;
+                InterfaceWithIps {
+                    interface: crate::models::Interface::from(i),
+                    ips: ips_map.remove(&iface_id).unwrap_or_default(),
+                }
+            })
+            .collect();
 
         // Fetch services for this device
         let services_models = services::Entity::find()
@@ -174,7 +181,10 @@ impl Db {
         Ok(Some(DeviceDetails {
             device: device_entity,
             interfaces: interfaces_with_ips,
-            services: services_models.into_iter().map(crate::models::Service::from).collect(),
+            services: services_models
+                .into_iter()
+                .map(crate::models::Service::from)
+                .collect(),
         }))
     }
 
@@ -247,7 +257,10 @@ impl Db {
                     );
                     txn.execute(ip_stmt).await?;
                 } else {
-                    tracing::warn!("No matching network found for IP {}, skipping IP assignment", ip_addr);
+                    tracing::warn!(
+                        "No matching network found for IP {}, skipping IP assignment",
+                        ip_addr
+                    );
                 }
             }
         }
@@ -280,7 +293,7 @@ impl Db {
         device.storage_gb = Set(params.storage_gb);
 
         device.update(&txn).await?;
-        
+
         // Update eth0 mac if provided
         if let Some(mac_str) = params.mac_address {
             // Try parsing first
@@ -289,7 +302,7 @@ impl Db {
                 let eth0 = interfaces::Entity::find()
                     .filter(interfaces::Column::DeviceId.eq(id))
                     .filter(interfaces::Column::Name.eq("eth0"))
-                    .one(&txn) 
+                    .one(&txn)
                     .await?;
 
                 if let Some(eth0_model) = eth0 {

@@ -1,4 +1,6 @@
-use crate::handlers::common::{AppError, AppResult, ServiceWithStatus, enrich_services_with_status};
+use crate::handlers::common::{
+    enrich_services_with_status, AppError, AppResult, ServiceWithStatus,
+};
 use crate::models::CreateServicePayload;
 use crate::AppState;
 use axum::{

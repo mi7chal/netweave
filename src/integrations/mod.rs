@@ -79,8 +79,10 @@ async fn sync_all_integrations(state: &AppState) -> Result<()> {
             }
             Err(e) => {
                 tracing::error!("Failed to sync integration {}: {}", model.name, e);
-                let err_msg: String =
-                    format!("ERROR: {}", friendly_integration_error_message(&e)).chars().take(50).collect();
+                let err_msg: String = format!("ERROR: {}", friendly_integration_error_message(&e))
+                    .chars()
+                    .take(50)
+                    .collect();
                 set_integration_status(state, &model, &err_msg).await;
             }
         }

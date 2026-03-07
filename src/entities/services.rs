@@ -14,6 +14,7 @@ pub struct Model {
     pub total_checks: Option<i32>,
     pub successful_checks: Option<i32>,
     pub is_public: Option<bool>,
+    pub icon_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

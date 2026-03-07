@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS services (
     total_checks INT DEFAULT 0,
     successful_checks INT DEFAULT 0,
 
-    is_public BOOLEAN DEFAULT FALSE
+    is_public BOOLEAN DEFAULT FALSE,
+    icon_url VARCHAR(255)
 );
 
 -- Service secrets which may be used to access the service healthecks, APIs etc.

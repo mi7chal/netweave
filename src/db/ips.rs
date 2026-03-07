@@ -1,9 +1,9 @@
 use super::{CreateIpParams, Db};
 use crate::entities::{devices, interfaces, ip_addresses, networks};
 use crate::models::{DeviceIpView, IpStatus, NetworkIpView};
-use sea_orm::*;
-use sea_orm::QueryOrder;
 use sea_orm::prelude::IpNetwork;
+use sea_orm::QueryOrder;
+use sea_orm::*;
 use uuid::Uuid;
 
 impl Db {
@@ -52,7 +52,10 @@ impl Db {
                 interface_id.into(),
                 params.network_id.into(),
                 ip_net.into(),
-                params.mac_address.map(crate::models::types::MacAddress).into(),
+                params
+                    .mac_address
+                    .map(crate::models::types::MacAddress)
+                    .into(),
                 params.is_static.into(),
                 params.status.into_value().into(),
                 params.description.into(),
@@ -82,10 +85,20 @@ impl Db {
             .column(ip_addresses::Column::Status)
             .column_as(networks::Column::Name, "network_name")
             .column(networks::Column::Cidr)
-            .into_tuple::<(Uuid, Uuid, String, IpNetwork, Option<crate::models::types::MacAddress>, bool, IpStatus, String, IpNetwork)>()
+            .into_tuple::<(
+                Uuid,
+                Uuid,
+                String,
+                IpNetwork,
+                Option<crate::models::types::MacAddress>,
+                bool,
+                IpStatus,
+                String,
+                IpNetwork,
+            )>()
             .all(&self.conn)
             .await?;
- 
+
         let mut views = Vec::new();
         for (id, device_id, iface_name, ip_net, mac, is_static, status, net_name, net_cidr) in res {
             views.push(DeviceIpView {
@@ -127,10 +140,18 @@ impl Db {
             .column(ip_addresses::Column::Description)
             .column_as(devices::Column::Hostname, "device_hostname")
             .column_as(interfaces::Column::Name, "interface_name")
-            .into_tuple::<(Uuid, IpNetwork, Option<crate::models::types::MacAddress>, IpStatus, Option<String>, Option<String>, Option<String>)>()
+            .into_tuple::<(
+                Uuid,
+                IpNetwork,
+                Option<crate::models::types::MacAddress>,
+                IpStatus,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+            )>()
             .all(&self.conn)
             .await?;
- 
+
         let mut views = Vec::new();
         for (id, ip_net, mac, status, description, hostname, iface_name) in res {
             views.push(NetworkIpView {
@@ -153,7 +174,10 @@ impl Db {
         Ok(res.rows_affected > 0)
     }
 
-    pub async fn update_ip(&self, params: crate::db::UpdateIpParams) -> Result<ip_addresses::Model, anyhow::Error> {
+    pub async fn update_ip(
+        &self,
+        params: crate::db::UpdateIpParams,
+    ) -> Result<ip_addresses::Model, anyhow::Error> {
         let ip = ip_addresses::Entity::find_by_id(params.ip_id)
             .one(&self.conn)
             .await?
@@ -179,7 +203,7 @@ impl Db {
 
         let mut updated = active_model.update(&self.conn).await?;
 
-        // Process mac_address separately with raw SQL to explicitly cast as macaddr 
+        // Process mac_address separately with raw SQL to explicitly cast as macaddr
         if let Some(mac_opt) = params.mac_address {
             if let Some(mac) = mac_opt {
                 let sql = "UPDATE ip_addresses SET mac_address = CAST($1 AS macaddr) WHERE id = $2";

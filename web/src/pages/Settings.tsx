@@ -6,30 +6,34 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Globe } from 'lucide-react';
+import { Globe, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function Settings() {
     const [homepagePublic, setHomepagePublic] = useState(false);
+    const [oidcAutoImport, setOidcAutoImport] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchApi<Record<string, string>>('/api/settings')
-            .then(data => setHomepagePublic(data.homepage_public === 'true'))
+            .then(data => {
+                setHomepagePublic(data.homepage_public === 'true');
+                setOidcAutoImport(data.oidc_auto_import === 'true');
+            })
             .finally(() => setLoading(false));
     }, []);
 
-    const handleToggle = async (checked: boolean) => {
-        setHomepagePublic(checked);
+    const handleToggle = async (key: string, checked: boolean, currentVal: boolean, setVal: (val: boolean) => void) => {
+        setVal(checked);
         try {
             await fetchApi('/api/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ homepage_public: checked }),
+                body: JSON.stringify({ [key]: checked }),
             });
             toast.success('Settings updated');
         } catch {
-            setHomepagePublic(!checked);
+            setVal(currentVal);
             toast.error('Failed to update settings');
         }
     };
@@ -80,7 +84,27 @@ export function Settings() {
                             <Switch
                                 id="homepage-public"
                                 checked={homepagePublic}
-                                onCheckedChange={handleToggle}
+                                onCheckedChange={(checked) => handleToggle('homepage_public', checked, homepagePublic, setHomepagePublic)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+                                    <Users className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <Label htmlFor="oidc-auto-import" className="text-base font-semibold">
+                                        OIDC Auto Import
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                        Automatically create local users when they log in via OIDC
+                                    </p>
+                                </div>
+                            </div>
+                            <Switch
+                                id="oidc-auto-import"
+                                checked={oidcAutoImport}
+                                onCheckedChange={(checked) => handleToggle('oidc_auto_import', checked, oidcAutoImport, setOidcAutoImport)}
                             />
                         </div>
                     </div>
