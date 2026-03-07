@@ -67,7 +67,7 @@ See [`.env.example`](.env.example) for a full reference.
 
 ### Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) (1.84+)
+- [Rust](https://www.rust-lang.org/tools/install) (1.94+)
 - [Node.js](https://nodejs.org/) 22+ with [pnpm](https://pnpm.io/)
 - [Docker](https://www.docker.com/) & Docker Compose
 

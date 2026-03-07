@@ -19,7 +19,7 @@ RUN pnpm build
 # ============================================
 # Stage 2: Build Backend
 # ============================================
-FROM rust:1.84-slim AS backend-builder
+FROM rust:1.94-slim AS backend-builder
 
 WORKDIR /app
 
