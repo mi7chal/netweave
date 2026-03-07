@@ -11,7 +11,7 @@ fn is_dev_mode() -> bool {
     matches!(
         env::var("NETWEAVE_ENV").as_deref(),
         Ok("dev") | Ok("development")
-    ) || env::var("ENCRYPTION_KEY").as_deref() == Ok("dev")
+    )
 }
 
 /// Validates the encryption key at startup.
@@ -99,8 +99,9 @@ pub fn decrypt(encrypted_base64: &str) -> Result<String> {
 fn get_encryption_key() -> Result<Vec<u8>> {
     match env::var("ENCRYPTION_KEY") {
         Ok(k) if k == "dev" => Ok(dev_key()),
-        Ok(k) if k.len() == 64 => hex::decode(&k)
-            .map_err(|e| anyhow::anyhow!("Invalid hex in ENCRYPTION_KEY: {e}")),
+        Ok(k) if k.len() == 64 => {
+            hex::decode(&k).map_err(|e| anyhow::anyhow!("Invalid hex in ENCRYPTION_KEY: {e}"))
+        }
         Ok(_) => Err(anyhow::anyhow!("ENCRYPTION_KEY has invalid length")),
         Err(_) if is_dev_mode() => Ok(dev_key()),
         Err(_) => Err(anyhow::anyhow!("ENCRYPTION_KEY is not set")),
@@ -109,8 +110,8 @@ fn get_encryption_key() -> Result<Vec<u8>> {
 
 fn dev_key() -> Vec<u8> {
     vec![
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D,
-        0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B,
-        0x1C, 0x1D, 0x1E, 0x1F,
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
+        0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D,
+        0x1E, 0x1F,
     ]
 }

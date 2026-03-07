@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
-import { LoadingState } from "@/components/LoadingState";
+import { DetailPageLoadingSkeleton } from "@/components/LoadingSkeletons";
 import { DeviceIcon } from "@/lib/device-utils";
 import { InterfaceDialog } from "@/components/InterfaceDialog";
 import { AssignStaticIpDialog } from "@/components/AssignStaticIpDialog";
@@ -79,7 +79,7 @@ function IpRow({ ip, iface, deviceId, mutate, showSeparator }: {
             toast.success(`IP updated to ${targetIp}`);
             setEditIpOpen(false);
             mutate();
-        } catch (e: any) { toast.error(e?.message || "Failed to update IP"); }
+        } catch (e: unknown) { toast.error((e as Error)?.message || "Failed to update IP"); }
     };
 
     const handleRelease = async () => {
@@ -294,7 +294,7 @@ export const DeviceDetailsPage = () => {
         setEditDeviceOpen(true);
     };
 
-    if (isLoading) return <AppLayout><LoadingState message="Loading device details..." /></AppLayout>;
+    if (isLoading) return <AppLayout><DetailPageLoadingSkeleton /></AppLayout>;
     if (error) return <AppLayout><ErrorState message={error.message} onRetry={() => mutate()} /></AppLayout>;
     if (!device) return <AppLayout><div className="text-center py-10 text-muted-foreground font-medium">Device not found</div></AppLayout>;
 

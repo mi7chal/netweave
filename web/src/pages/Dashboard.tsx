@@ -7,15 +7,22 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, Activity, Server, AlertCircle } from "lucide-react";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
+import { DashboardLoadingSkeleton } from "@/components/LoadingSkeletons";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Dashboard = () => {
+    const { isAuthenticated } = useAuth();
     const { data, error, mutate } = useSWR<DashboardResponse>('/api/dashboard', fetchApi, {
         refreshInterval: 5000,
         revalidateOnFocus: true,
     });
 
     if (error) {
-        return <AppLayout><ErrorState message={error.message} onRetry={() => mutate()} /></AppLayout>;
+        return <AppLayout showNavigation={isAuthenticated}><ErrorState message={error.message} onRetry={() => mutate()} /></AppLayout>;
+    }
+
+    if (!data) {
+        return <AppLayout showNavigation={isAuthenticated}><DashboardLoadingSkeleton /></AppLayout>;
     }
 
     const services = data?.services || [];
@@ -27,7 +34,7 @@ export const Dashboard = () => {
     const overallUptime = totalChecks > 0 ? (successfulChecks / totalChecks) * 100 : 100;
 
     return (
-        <AppLayout>
+        <AppLayout showNavigation={isAuthenticated}>
             <div className="flex flex-col items-center w-full max-w-[1400px] mx-auto px-2 sm:px-6 lg:px-12 pb-10">
 
                 <TimeWidget />

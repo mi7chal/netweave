@@ -51,8 +51,7 @@ export function FormSelectField<TFieldValues extends FieldValues>({
                     <FormLabel>{label}</FormLabel>
                     <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        value={field.value}
+                        value={field.value ?? undefined}
                     >
                         <FormControl>
                             <SelectTrigger

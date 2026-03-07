@@ -42,7 +42,7 @@ export function EditDeviceDialog({ open, onOpenChange, onSubmit, initialData }: 
         defaultValues: {
             hostname: initialData.hostname || "",
             os_info: initialData.os_info || "",
-            device_type: initialData.device_type || DeviceType.Physical,
+            device_type: initialData.device_type || DeviceType.Other,
             cpu_cores: initialData.cpu_cores,
             ram_gb: initialData.ram_gb,
             storage_gb: initialData.storage_gb,
@@ -54,7 +54,7 @@ export function EditDeviceDialog({ open, onOpenChange, onSubmit, initialData }: 
             form.reset({
                 hostname: initialData.hostname || "",
                 os_info: initialData.os_info || "",
-                device_type: initialData.device_type || DeviceType.Physical,
+                device_type: initialData.device_type || DeviceType.Other,
                 cpu_cores: initialData.cpu_cores,
                 ram_gb: initialData.ram_gb,
                 storage_gb: initialData.storage_gb,

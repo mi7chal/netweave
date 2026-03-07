@@ -1,6 +1,6 @@
 use crate::db::CreateIpParams;
 use crate::db::helpers;
-use crate::handlers::common::{AppError, AppResult};
+use crate::handlers::common::{AppError, AppResult, parse_ip_addr, parse_ip_status_or_default};
 use crate::models::{AssignIpPayload, IpStatus};
 use crate::models::types::parse_optional_mac;
 use crate::AppState;
@@ -10,7 +10,6 @@ use axum::{
     Json,
 };
 use sea_orm::ConnectionTrait;
-use std::net::IpAddr;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -19,14 +18,11 @@ pub async fn assign_ip(
     Path(device_id): Path<Uuid>,
     Json(payload): Json<AssignIpPayload>,
 ) -> AppResult<Json<Uuid>> {
-    let ip_address = IpAddr::from_str(&payload.ip_address)
-        .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
+    let ip_address = parse_ip_addr(&payload.ip_address)?;
 
     let mac_address = parse_optional_mac(&payload.mac_address);
 
-    let status = payload.status.as_deref()
-        .and_then(|s| IpStatus::from_str(s).ok())
-        .unwrap_or(IpStatus::Active);
+    let status = parse_ip_status_or_default(payload.status.as_deref());
 
     let params = CreateIpParams {
         network_id: payload.network_id,
@@ -79,9 +75,9 @@ pub async fn update_ip(
     let ip_address = payload
         .ip_address
         .as_ref()
-        .map(|s| IpAddr::from_str(s))
+        .map(|s| parse_ip_addr(s))
         .transpose()
-        .map_err(|_| AppError::BadRequest("Invalid IP address".into()))?;
+        ?;
 
     let mac_address = payload.mac_address.as_ref().map(|m| {
         if m.is_empty() { None } else { mac_address::MacAddress::from_str(m).ok() }

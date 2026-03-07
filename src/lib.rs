@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod config;
 pub mod db;
 pub mod entities;
 pub mod handlers;
@@ -8,8 +9,10 @@ pub mod monitoring;
 pub mod routes;
 pub mod services;
 pub mod utils;
+pub mod validation;
 
 use crate::auth::oidc::OidcService;
+use crate::config::Config;
 use crate::db::Db;
 use crate::utils::rate_limit::LoginRateLimiter;
 use axum::Router;
@@ -30,12 +33,17 @@ pub enum ServiceStatus {
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
+    pub config: Config,
     pub oidc: Option<OidcService>,
     pub service_statuses: Arc<RwLock<HashMap<Uuid, ServiceStatus>>>,
     pub login_rate_limiter: LoginRateLimiter,
 }
 
-pub async fn create_state(pool: PgPool, oidc: Option<OidcService>) -> anyhow::Result<AppState> {
+pub async fn create_state(
+    config: Config,
+    pool: PgPool,
+    oidc: Option<OidcService>,
+) -> anyhow::Result<AppState> {
     let db = Db::new(pool);
     let service_statuses = Arc::new(RwLock::new(HashMap::new()));
     let login_rate_limiter = LoginRateLimiter::new(10, Duration::from_secs(60));
@@ -49,6 +57,7 @@ pub async fn create_state(pool: PgPool, oidc: Option<OidcService>) -> anyhow::Re
 
     Ok(AppState {
         db,
+        config,
         oidc,
         service_statuses,
         login_rate_limiter,

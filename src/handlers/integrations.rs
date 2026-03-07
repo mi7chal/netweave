@@ -1,6 +1,5 @@
-use crate::entities::integrations;
 use crate::handlers::common::{AppError, AppResult};
-use crate::utils::{encryption, validation};
+use crate::services::integration_service::IntegrationService;
 use crate::AppState;
 use axum::{
     extract::{Path, State},
@@ -8,7 +7,6 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -21,77 +19,19 @@ pub struct CreateIntegrationPayload {
 
 pub async fn list_integrations(
     State(state): State<AppState>,
-) -> AppResult<Json<Vec<integrations::Model>>> {
-    let mut list = integrations::Entity::find()
-        .all(&state.db.conn)
-        .await?;
-
-    for i in &mut list {
-        if let serde_json::Value::Object(ref mut map) = i.config {
-            map.remove("password");
-            map.remove("token");
-        }
-    }
-
+) -> AppResult<Json<Vec<crate::entities::integrations::Model>>> {
+    let list = IntegrationService::list_sanitized(&state.db).await?;
     Ok(Json(list))
 }
 
 pub async fn create_integration(
     State(state): State<AppState>,
-    Json(mut payload): Json<CreateIntegrationPayload>,
-) -> AppResult<Json<integrations::Model>> {
-    validation::validate_name(&payload.name, "Integration name", 100)
-        .map_err(AppError::BadRequest)?;
-
-    if let serde_json::Value::Object(ref mut map) = payload.config {
-        for field in ["password", "token"] {
-            if let Some(val) = map
-                .get(field)
-                .and_then(|v| v.as_str())
-                .filter(|v| !v.is_empty())
-            {
-                let encrypted = encryption::encrypt(val)
-                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Encryption error: {e}")))?;
-                map.insert(field.to_string(), serde_json::json!(encrypted));
-            }
-        }
-    }
-
-    let now = chrono::Utc::now().into();
-    let model = integrations::ActiveModel {
-        id: Set(Uuid::now_v7()),
-        name: Set(payload.name),
-        provider_type: Set(payload.provider_type),
-        config: Set(payload.config),
-        status: Set(Some("PENDING".to_string())),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    };
-
-    let saved = model.insert(&state.db.conn).await?;
-    let integration = saved.clone();
-    let s = state.clone();
-
-    tokio::spawn(async move {
-        update_integration_status(&s, &integration, "SYNCING").await;
-        match crate::integrations::process_integration(&s, &integration).await {
-            Ok(_) => {
-                let mut active: integrations::ActiveModel = integration.into();
-                active.status = Set(Some("ACTIVE".to_string()));
-                active.last_sync_at = Set(Some(chrono::Utc::now().into()));
-                if let Err(e) = active.update(&s.db.conn).await {
-                    tracing::error!("Failed to update integration status to ACTIVE: {}", e);
-                }
-            }
-            Err(e) => {
-                tracing::error!("Auto sync failed: {e}");
-                let msg: String = e.to_string().chars().take(240).collect();
-                update_integration_status(&s, &integration, &format!("ERROR: {msg}")).await;
-            }
-        }
-    });
-
+    Json(payload): Json<CreateIntegrationPayload>,
+) -> AppResult<Json<crate::entities::integrations::Model>> {
+    let saved = IntegrationService::create(&state.db, payload)
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+    IntegrationService::spawn_sync(state, saved.clone());
     Ok(Json(saved))
 }
 
@@ -99,9 +39,7 @@ pub async fn delete_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
-    integrations::Entity::delete_by_id(id)
-        .exec(&state.db.conn)
-        .await?;
+    IntegrationService::delete(&state.db, id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -109,46 +47,9 @@ pub async fn trigger_sync(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    let integration = match integrations::Entity::find_by_id(id)
-        .one(&state.db.conn)
-        .await
-    {
-        Ok(Some(i)) => i,
-        Ok(None) => return (StatusCode::NOT_FOUND, "Integration not found").into_response(),
-        Err(e) => return AppError::Internal(e.into()).into_response(),
-    };
-
-    update_integration_status(&state, &integration, "SYNCING").await;
-
-    tokio::spawn(async move {
-        match crate::integrations::process_integration(&state, &integration).await {
-            Ok(_) => {
-                let mut active: integrations::ActiveModel = integration.into();
-                active.status = Set(Some("ACTIVE".to_string()));
-                active.last_sync_at = Set(Some(chrono::Utc::now().into()));
-                if let Err(e) = active.update(&state.db.conn).await {
-                    tracing::error!("Failed to update integration status after sync: {}", e);
-                }
-            }
-            Err(e) => {
-                tracing::error!("Manual sync failed: {e}");
-                let msg: String = e.to_string().chars().take(240).collect();
-                update_integration_status(&state, &integration, &format!("ERROR: {msg}")).await;
-            }
-        }
-    });
-
-    (StatusCode::ACCEPTED, "Sync started").into_response()
-}
-
-async fn update_integration_status(
-    state: &AppState,
-    integration: &integrations::Model,
-    status: &str,
-) {
-    let mut active: integrations::ActiveModel = integration.clone().into();
-    active.status = Set(Some(status.to_string()));
-    if let Err(e) = active.update(&state.db.conn).await {
-        tracing::warn!("Failed to update integration status to '{}': {}", status, e);
+    match IntegrationService::trigger_sync(state, id).await {
+        Ok(true) => (StatusCode::ACCEPTED, "Sync started").into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, "Integration not found").into_response(),
+        Err(e) => AppError::Internal(e).into_response(),
     }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { fetchApi } from '@/lib/api-client';
 
@@ -22,38 +23,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
     const checkAuth = useCallback(async () => {
         try {
-            const res = await fetch('/auth/me');
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-            } else {
-                setUser(null);
-            }
+            const data = await fetchApi<AuthUser>('/api/auth/me', { silent: true });
+            setUser(data);
         } catch {
             setUser(null);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [setUser, setIsLoading]);
 
     useEffect(() => {
         checkAuth();
     }, [checkAuth]);
 
     const login = async (username: string, password: string) => {
-        await fetchApi('/auth/login', {
+        await fetchApi('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
         });
         await checkAuth();
     };
 
     const logout = async () => {
-        await fetch('/auth/logout');
+        try {
+            await fetchApi('/api/auth/logout', { method: 'POST' });
+        } catch {
+            // ignore
+        }
         setUser(null);
     };
 

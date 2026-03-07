@@ -3,11 +3,11 @@ use chrono::{DateTime, Utc};
 use mac_address::MacAddress;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::types::ipnetwork::IpNetwork;
+use ipnetwork::IpNetwork;
 use std::net::IpAddr;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Network {
     pub id: Uuid,
     pub name: String,
@@ -18,7 +18,7 @@ pub struct Network {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Device {
     pub id: Uuid,
     pub parent_device_id: Option<Uuid>,
@@ -32,7 +32,7 @@ pub struct Device {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Interface {
     pub id: Uuid,
     pub device_id: Uuid,
@@ -41,7 +41,7 @@ pub struct Interface {
     pub interface_type: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IpAddress {
     pub id: Uuid,
     pub network_id: Uuid,
@@ -53,7 +53,7 @@ pub struct IpAddress {
     pub is_static: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Service {
     pub id: Uuid,
     pub device_id: Option<Uuid>,
@@ -66,7 +66,7 @@ pub struct Service {
     pub is_public: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardService {
     pub id: Uuid,
     pub name: String,
@@ -87,7 +87,7 @@ pub struct ServiceWithStatus {
     pub uptime_percentage: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceIpView {
     pub id: Uuid, // Interface ID
     pub device_id: Uuid,
@@ -100,7 +100,7 @@ pub struct DeviceIpView {
     pub network_cidr: Option<IpNetwork>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkIpView {
     pub id: Uuid, // IpAddress ID
     pub ip_address: IpAddr,
@@ -110,7 +110,7 @@ pub struct NetworkIpView {
     pub status: IpStatus,
     pub description: Option<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceListView {
     pub id: Uuid,
     pub hostname: String,

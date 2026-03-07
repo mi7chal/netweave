@@ -38,7 +38,7 @@ chrono = { version = "0.4", features = ["serde"] }
 mac_address = { version = "1.1", features = ["serde"] }
 
 # Auth
-tower-sessions = "0.13"
+tower-sessions = { version = "0.13", features = ["signed"] }
 tower-sessions-sqlx-store = { version = "0.14", features = ["postgres"] }
 openidconnect = "3.4"                                                     # OIDC Support
 bcrypt = "0.15"

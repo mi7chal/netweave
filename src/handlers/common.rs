@@ -8,6 +8,8 @@ use axum::{
     Json,
 };
 use serde::Serialize;
+use std::net::IpAddr;
+use std::str::FromStr;
 
 #[derive(Serialize)]
 pub struct ErrorResponse {
@@ -18,6 +20,10 @@ pub enum AppError {
     Internal(anyhow::Error),
     BadRequest(String),
     NotFound(String),
+    Unauthorized(String),
+    Forbidden(String),
+    TooManyRequests(String),
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -32,6 +38,10 @@ impl IntoResponse for AppError {
             }
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            AppError::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
+            AppError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
         };
         (status, Json(ErrorResponse { error: msg })).into_response()
     }
@@ -44,6 +54,16 @@ impl<E: Into<anyhow::Error>> From<E> for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+pub fn parse_ip_addr(value: &str) -> AppResult<IpAddr> {
+    IpAddr::from_str(value).map_err(|_| AppError::BadRequest("Invalid IP address".into()))
+}
+
+pub fn parse_ip_status_or_default(value: Option<&str>) -> crate::models::IpStatus {
+    value
+        .and_then(|s| crate::models::IpStatus::from_str(s).ok())
+        .unwrap_or(crate::models::IpStatus::Active)
+}
 
 pub async fn enrich_services_with_status(
     state: &AppState,

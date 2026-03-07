@@ -5,6 +5,7 @@ import { Server, LogIn, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { fetchApi } from '@/lib/api-client';
 
 export function Login() {
     const { login, isAuthenticated } = useAuth();
@@ -15,10 +16,15 @@ export function Login() {
     const [oidcEnabled, setOidcEnabled] = useState(false);
 
     useEffect(() => {
-        fetch('/auth/check-oidc')
-            .then(r => r.json())
-            .then(data => setOidcEnabled(data.oidc_enabled))
-            .catch(() => { });
+        const checkOidc = async () => {
+            try {
+                const data = await fetchApi<{ oidc_enabled: boolean }>('/api/auth/check-oidc', { silent: true });
+                setOidcEnabled(data.oidc_enabled);
+            } catch {
+                // Error is handled by api-client toast/backend down detection
+            }
+        };
+        checkOidc();
     }, []);
 
     // Redirect if already authenticated
@@ -34,7 +40,7 @@ export function Login() {
         setIsSubmitting(true);
         try {
             await login(username, password);
-        } catch (err) {
+        } catch {
             setError('Invalid username or password');
         } finally {
             setIsSubmitting(false);
@@ -136,7 +142,7 @@ export function Login() {
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => { window.location.href = '/auth/login'; }}
+                                onClick={() => { window.location.href = '/api/auth/login'; }}
                                 className="w-full h-11 rounded-xl border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all"
                             >
                                 <Shield className="h-4 w-4 mr-2" />
@@ -144,6 +150,33 @@ export function Login() {
                             </Button>
                         </div>
                     )}
+                </div>
+
+                {/* Copyright Footer */}
+                <div className="w-full mt-8 pt-8 flex justify-center opacity-30 hover:opacity-100 transition-opacity duration-300">
+                    <a
+                        href="https://github.com/mi7chal"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/40 hover:bg-background/80 hover:shadow-sm border border-transparent hover:border-border/30 transition-all duration-300 text-muted-foreground hover:text-primary group"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5 group-hover:scale-110 transition-transform duration-300"
+                        >
+                            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                            <path d="M9 18c-4.51 2-5-2-7-2" />
+                        </svg>
+                        <span className="text-[11px] font-medium tracking-wide">© 2026 mi7chal</span>
+                    </a>
                 </div>
             </motion.div>
         </div>

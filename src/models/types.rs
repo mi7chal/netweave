@@ -49,8 +49,7 @@ impl Nullable for MacAddress {
     fn null() -> Value { Value::String(None) }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeviceType {
     Physical,
     Vm,
@@ -84,8 +83,7 @@ impl From<&str> for DeviceType {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, EnumIter, DeriveActiveEnum)]
-#[sqlx(type_name = "varchar", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Text", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IpStatus {
     #[sea_orm(string_value = "ACTIVE")]

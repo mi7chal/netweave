@@ -1,10 +1,11 @@
 use crate::db::Db;
+use crate::handlers::common::{AppError, AppResult};
 use crate::AppState;
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Redirect},
     routing::get,
-    Router,
+    Json, Router,
 };
 use bcrypt::{hash, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
@@ -84,142 +85,117 @@ pub struct LoginPayload {
     pub password: String,
 }
 
+#[derive(Serialize)]
+pub struct AuthStatusResponse {
+    pub status: &'static str,
+    pub message: &'static str,
+}
+
+#[derive(Serialize)]
+pub struct LogoutResponse {
+    pub status: &'static str,
+}
+
+#[derive(Serialize)]
+pub struct OidcStatusResponse {
+    pub oidc_enabled: bool,
+}
+
 pub async fn login_username_password(
-    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<std::net::SocketAddr>,
     State(state): State<AppState>,
     session: Session,
     axum::Json(payload): axum::Json<LoginPayload>,
-) -> impl IntoResponse {
-    if !state.login_rate_limiter.check(addr.ip()).await {
-        return (
-            axum::http::StatusCode::TOO_MANY_REQUESTS,
-            axum::Json(serde_json::json!({"error": "Too many login attempts. Please try again later."})),
-        )
-            .into_response();
+) -> AppResult<Json<AuthStatusResponse>> {
+    if !state.login_rate_limiter.check(&payload.username).await {
+        return Err(AppError::TooManyRequests(
+            "Too many login attempts. Please try again later.".into(),
+        ));
     }
 
-    let user_res = state.db.get_user_by_username(&payload.username).await;
-
-    match user_res {
+    match state.db.get_user_by_username(&payload.username).await {
         Ok(Some(creds)) => {
-            let password_hash = match creds.password_hash {
-                Some(ref h) if !h.is_empty() => h,
-                _ => {
-                    // OIDC-only user without a password — reject password login
-                    return (
-                        axum::http::StatusCode::UNAUTHORIZED,
-                        axum::Json(serde_json::json!({"error": "Invalid username or password"})),
-                    )
-                        .into_response();
-                }
+            // OIDC-only user without a password will have an empty or null password_hash
+            let Some(password_hash) = creds.password_hash.filter(|h| !h.is_empty()) else {
+                return Err(AppError::Unauthorized(
+                    "Invalid username or password".into(),
+                ));
             };
 
-            let valid = bcrypt::verify(&payload.password, password_hash).unwrap_or(false);
-            if valid {
-                let role = Role::from_str(&creds.role).unwrap_or(Role::Viewer);
+            if bcrypt::verify(&payload.password, &password_hash).unwrap_or(false) {
                 let auth_user = AuthUser {
                     id: creds.id,
                     username: creds.username,
-                    role,
+                    role: Role::from_str(&creds.role).unwrap_or(Role::Viewer),
                 };
+
                 if let Err(e) = session.insert(AUTH_SESSION_KEY, &auth_user).await {
                     tracing::error!("Failed to set session during login: {}", e);
-                    return (
-                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        axum::Json(serde_json::json!({"error": "Internal server error"})),
-                    )
-                        .into_response();
+                    return Err(AppError::Internal(e.into()));
                 }
 
-                return axum::Json(serde_json::json!({
-                    "status": "success",
-                    "message": "Logged in successfully"
-                }))
-                .into_response();
+                return Ok(Json(AuthStatusResponse {
+                    status: "success",
+                    message: "Logged in successfully",
+                }));
             }
         }
         Ok(None) => {}
         Err(e) => {
             tracing::error!("Login DB error: {}", e);
-            return (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(serde_json::json!({"error": "Internal server error"})),
-            )
-                .into_response();
+            return Err(AppError::Internal(e));
         }
     }
 
-    (
-        axum::http::StatusCode::UNAUTHORIZED,
-        axum::Json(serde_json::json!({"error": "Invalid username or password"})),
-    )
-        .into_response()
+    Err(AppError::Unauthorized(
+        "Invalid username or password".into(),
+    ))
 }
 
-pub async fn me_handler(session: Session) -> impl IntoResponse {
-    let user: Option<AuthUser> = match session.get(AUTH_SESSION_KEY).await {
-        Ok(u) => u,
-        Err(e) => {
+pub async fn me_handler(session: Session) -> AppResult<Json<AuthUser>> {
+    let user = session
+        .get::<AuthUser>(AUTH_SESSION_KEY)
+        .await
+        .unwrap_or_else(|e| {
             tracing::warn!("Failed to read auth session: {}", e);
             None
-        }
-    };
+        });
+
     match user {
-        Some(user) => axum::Json(serde_json::json!({
-            "id": user.id,
-            "username": user.username,
-            "role": user.role
-        }))
-        .into_response(),
-        None => (
-            axum::http::StatusCode::UNAUTHORIZED,
-            axum::Json(serde_json::json!({"error": "Not authenticated"})),
-        )
-            .into_response(),
+        Some(user) => Ok(Json(user)),
+        None => Err(AppError::Unauthorized("Not authenticated".into())),
     }
 }
 
-pub async fn check_oidc_handler(State(state): State<AppState>) -> impl IntoResponse {
-    axum::Json(serde_json::json!({
-        "oidc_enabled": state.oidc.is_some()
+pub async fn check_oidc_handler(
+    State(state): State<AppState>,
+) -> AppResult<Json<OidcStatusResponse>> {
+    Ok(Json(OidcStatusResponse {
+        oidc_enabled: state.oidc.is_some(),
     }))
 }
 
 const OIDC_NONCE_KEY: &str = "oidc_nonce";
 const OIDC_CSRF_KEY: &str = "oidc_csrf";
 
-pub async fn oidc_login(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+pub async fn oidc_login(State(state): State<AppState>, session: Session) -> AppResult<Redirect> {
     if let Some(oidc) = &state.oidc {
         let (auth_url, csrf_token, nonce) = oidc.authorization_url();
-        if let Err(e) = session
-            .insert(OIDC_NONCE_KEY, nonce.secret().clone())
-            .await
-        {
+        if let Err(e) = session.insert(OIDC_NONCE_KEY, nonce.secret().clone()).await {
             tracing::error!("Failed to store OIDC nonce in session: {}", e);
-            return (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Authentication error",
-            )
-                .into_response();
+            return Err(AppError::Internal(e.into()));
         }
         if let Err(e) = session
             .insert(OIDC_CSRF_KEY, csrf_token.secret().clone())
             .await
         {
             tracing::error!("Failed to store OIDC CSRF in session: {}", e);
-            return (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Authentication error",
-            )
-                .into_response();
+            return Err(AppError::Internal(e.into()));
         }
-        Redirect::to(auth_url.as_str()).into_response()
+        Ok(Redirect::to(auth_url.as_str()))
     } else {
-        (
-            axum::http::StatusCode::SERVICE_UNAVAILABLE,
-            "OIDC authentication is not configured.",
-        )
-            .into_response()
+        Err(AppError::ServiceUnavailable(
+            "OIDC authentication is not configured.".into(),
+        ))
     }
 }
 
@@ -245,24 +221,24 @@ pub async fn oidc_callback(
         }
     };
 
-    let stored_csrf: Option<String> = match session.get(OIDC_CSRF_KEY).await {
-        Ok(v) => v,
-        Err(e) => {
+    let stored_csrf = session
+        .get::<String>(OIDC_CSRF_KEY)
+        .await
+        .unwrap_or_else(|e| {
             tracing::warn!("Failed to read OIDC CSRF from session: {}", e);
             None
-        }
-    };
+        });
     if stored_csrf.as_deref() != Some(&params.state) {
         return Redirect::to("/?error=auth_failed").into_response();
     }
 
-    let stored_nonce: Option<String> = match session.get(OIDC_NONCE_KEY).await {
-        Ok(v) => v,
-        Err(e) => {
+    let stored_nonce = session
+        .get::<String>(OIDC_NONCE_KEY)
+        .await
+        .unwrap_or_else(|e| {
             tracing::warn!("Failed to read OIDC nonce from session: {}", e);
             None
-        }
-    };
+        });
     let nonce = match stored_nonce {
         Some(n) => openidconnect::Nonce::new(n),
         None => return Redirect::to("/?error=auth_failed").into_response(),
@@ -280,23 +256,17 @@ pub async fn oidc_callback(
     let _ = session.remove::<String>(OIDC_CSRF_KEY).await;
 
     let email = claims.email().map(|e| e.to_string()).unwrap_or_default();
-    let preferred_username = claims
+    let username = claims
         .preferred_username()
         .map(|u| u.to_string())
-        .unwrap_or(email.clone());
+        .unwrap_or_else(|| email.clone());
 
-    let username = preferred_username;
-    let user_res = state.db.get_user_by_username(&username).await;
-
-    let user = match user_res {
-        Ok(Some(creds)) => {
-            let role = Role::from_str(&creds.role).unwrap_or(Role::Viewer);
-            AuthUser {
-                id: creds.id,
-                username: creds.username,
-                role,
-            }
-        }
+    let user = match state.db.get_user_by_username(&username).await {
+        Ok(Some(creds)) => AuthUser {
+            id: creds.id,
+            username: creds.username,
+            role: Role::from_str(&creds.role).unwrap_or(Role::Viewer),
+        },
         Ok(None) => {
             let id = Uuid::now_v7();
             let role = Role::Viewer;
@@ -309,11 +279,7 @@ pub async fn oidc_callback(
                 tracing::error!("Failed to create OIDC user '{}': {}", username, e);
                 return Redirect::to("/?error=auth_failed").into_response();
             }
-            AuthUser {
-                id,
-                username,
-                role,
-            }
+            AuthUser { id, username, role }
         }
         Err(e) => {
             tracing::error!("Database error during OIDC callback: {}", e);
@@ -329,11 +295,11 @@ pub async fn oidc_callback(
     Redirect::to("/").into_response()
 }
 
-pub async fn logout_handler(session: Session) -> impl IntoResponse {
+pub async fn logout_handler(session: Session) -> AppResult<Json<LogoutResponse>> {
     if let Err(e) = session.flush().await {
         tracing::warn!("Failed to flush session on logout: {}", e);
     }
-    Redirect::to("/")
+    Ok(Json(LogoutResponse { status: "success" }))
 }
 
 pub fn routes(state: AppState) -> Router<AppState> {
@@ -342,6 +308,6 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/check-oidc", get(check_oidc_handler))
         .route("/login", get(oidc_login).post(login_username_password))
         .route("/callback", get(oidc_callback))
-        .route("/logout", get(logout_handler))
+        .route("/logout", get(logout_handler).post(logout_handler))
         .with_state(state)
 }

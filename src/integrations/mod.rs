@@ -58,14 +58,12 @@ pub async fn run_sync_task(state: AppState) {
         if let Err(e) = sync_all_integrations(&state).await {
             tracing::error!("Integration sync cycle failed: {}", e);
         }
-        sleep(Duration::from_secs(3600)).await;
+        sleep(Duration::from_secs(1800)).await;
     }
 }
 
 async fn sync_all_integrations(state: &AppState) -> Result<()> {
-    let all = integrations::Entity::find()
-        .all(&state.db.conn)
-        .await?;
+    let all = integrations::Entity::find().all(&state.db.conn).await?;
 
     for model in all {
         set_integration_status(state, &model, "SYNCING").await;
@@ -81,15 +79,38 @@ async fn sync_all_integrations(state: &AppState) -> Result<()> {
             }
             Err(e) => {
                 tracing::error!("Failed to sync integration {}: {}", model.name, e);
-                let err_msg: String = format!("ERROR: {}", e)
-                    .chars()
-                    .take(250)
-                    .collect();
+                let err_msg: String =
+                    format!("ERROR: {}", friendly_integration_error_message(&e)).chars().take(50).collect();
                 set_integration_status(state, &model, &err_msg).await;
             }
         }
     }
     Ok(())
+}
+
+fn friendly_integration_error_message(error: &anyhow::Error) -> String {
+    let lower = error.to_string().to_lowercase();
+
+    if lower.contains("timed out") || lower.contains("timeout") {
+        return "request timed out".to_string();
+    }
+    if lower.contains("unauthorized") || lower.contains("401") {
+        return "authentication failed (check integration credentials)".to_string();
+    }
+    if lower.contains("forbidden") || lower.contains("403") {
+        return "access denied by provider".to_string();
+    }
+    if lower.contains("connection refused") {
+        return "cannot connect to provider endpoint".to_string();
+    }
+    if lower.contains("dns") || lower.contains("name or service not known") {
+        return "provider host could not be resolved".to_string();
+    }
+    if lower.contains("certificate") || lower.contains("tls") {
+        return "tls/certificate validation failed".to_string();
+    }
+
+    error.to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +153,9 @@ async fn sync_networks(
     let mut known_networks = state.db.list_networks().await?;
 
     for net in fetched {
-        let already_exists = known_networks.iter().any(|n| n.cidr.to_string() == net.cidr);
+        let already_exists = known_networks
+            .iter()
+            .any(|n| n.cidr.to_string() == net.cidr);
         if already_exists {
             continue;
         }
@@ -144,11 +167,9 @@ async fn sync_networks(
         );
 
         use std::str::FromStr;
-        let cidr = sqlx::types::ipnetwork::IpNetwork::from_str(&net.cidr)
+        let cidr = ipnetwork::IpNetwork::from_str(&net.cidr)
             .map_err(|e| anyhow::anyhow!("Invalid CIDR from integration: {}", e))?;
-        let gateway = net
-            .gateway
-            .and_then(|g| g.parse::<std::net::IpAddr>().ok());
+        let gateway = net.gateway.and_then(|g| g.parse::<std::net::IpAddr>().ok());
 
         state
             .db
@@ -207,11 +228,7 @@ async fn sync_devices(state: &AppState, provider: &dyn IntegrationProvider) -> R
     Ok(())
 }
 
-async fn ensure_device_for_mac(
-    state: &AppState,
-    mac: &str,
-    hostname: &str,
-) -> Result<uuid::Uuid> {
+async fn ensure_device_for_mac(state: &AppState, mac: &str, hostname: &str) -> Result<uuid::Uuid> {
     let existing = interfaces::Entity::find()
         .select_only()
         .column(interfaces::Column::Id)
@@ -405,11 +422,7 @@ pub async fn trigger_static_lease_delete(state: &AppState, mac: &str, ip: &str, 
 // Helpers
 // ---------------------------------------------------------------------------
 
-async fn set_integration_status(
-    state: &AppState,
-    model: &integrations::Model,
-    status: &str,
-) {
+async fn set_integration_status(state: &AppState, model: &integrations::Model, status: &str) {
     let mut active: integrations::ActiveModel = model.clone().into();
     active.status = Set(Some(status.to_string()));
     if let Err(e) = active.update(&state.db.conn).await {

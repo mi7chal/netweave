@@ -47,7 +47,25 @@ impl AdGuardIntegration {
         if self.password_encrypted.is_empty() {
             return Ok("".to_string());
         }
-        encryption::decrypt(&self.password_encrypted)
+        
+        // Try to decrypt, but provide helpful context on failure
+        match encryption::decrypt(&self.password_encrypted) {
+            Ok(pwd) => Ok(pwd),
+            Err(e) => {
+                tracing::error!(
+                    "Failed to decrypt AdGuard password. This likely means:\n\
+                     1. The password was encrypted with a different ENCRYPTION_KEY\n\
+                     2. The password is stored as plain text (not encrypted)\n\
+                     3. The encrypted data is corrupted\n\
+                     Original error: {}",
+                    e
+                );
+                
+                // Try treating it as plain text as a fallback
+                tracing::warn!("Attempting to use password as plain text (legacy/unencrypted)");
+                Ok(self.password_encrypted.clone())
+            }
+        }
     }
 
     async fn login(&self) -> Result<()> {
@@ -117,10 +135,17 @@ impl IntegrationProvider for AdGuardIntegration {
         let res = self.client.get(&url).send().await?;
         
         if !res.status().is_success() {
-            return Err(anyhow::anyhow!("AdGuard fetch_networks failed: {}", res.status()));
+            tracing::warn!("AdGuard fetch_networks: DHCP might be disabled (Status={})", res.status());
+            return Ok(Vec::new());
         }
 
-        let json: Value = res.json().await?;
+        let json: Value = match res.json().await {
+            Ok(j) => j,
+            Err(e) => {
+                tracing::warn!("AdGuard fetch_networks: Failed to parse JSON: {}", e);
+                return Ok(Vec::new());
+            }
+        };
         tracing::info!("AdGuard DHCP status response keys: {:?}", json.as_object().map(|o| o.keys().collect::<Vec<_>>()));
         
         let mut networks = Vec::new();
@@ -174,12 +199,18 @@ impl IntegrationProvider for AdGuardIntegration {
         let res = self.client.get(&url).send().await?;
         
         if !res.status().is_success() {
-            return Err(anyhow::anyhow!("AdGuard fetch_devices failed: {}", res.status()));
+            tracing::warn!("AdGuard fetch_devices: DHCP might be disabled (Status={})", res.status());
+            return Ok(Vec::new());
         }
 
-        let text = res.text().await?;
-        let json: Value = serde_json::from_str(&text)
-            .map_err(|e| anyhow::anyhow!("Failed to parse DHCP status: {} (Body: {})", e, text))?;
+        let text = res.text().await.unwrap_or_default();
+        let json: Value = match serde_json::from_str(&text) {
+            Ok(j) => j,
+            Err(e) => {
+                tracing::warn!("AdGuard fetch_devices: Failed to parse DHCP status JSON: {} (Body: {})", e, text);
+                return Ok(Vec::new());
+            }
+        };
         
         // Define structs for reading - local to function to avoid clutter
         #[derive(Deserialize)] 

@@ -9,6 +9,14 @@ impl Db {
         Ok(rows.into_iter().map(|r| (r.key, r.value)).collect())
     }
 
+    pub async fn get_setting(&self, key: &str) -> Result<Option<String>, anyhow::Error> {
+        let row = settings::Entity::find()
+            .filter(settings::Column::Key.eq(key))
+            .one(&self.conn)
+            .await?;
+        Ok(row.map(|r| r.value))
+    }
+
     pub async fn set_setting(&self, key: &str, value: &str) -> Result<(), anyhow::Error> {
         let model = settings::ActiveModel {
             key: Set(key.to_string()),

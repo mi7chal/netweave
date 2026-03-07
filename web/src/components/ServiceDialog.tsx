@@ -24,6 +24,7 @@ export function ServiceDialog({ open, onOpenChange, onSaved, initialData }: Serv
 
     useEffect(() => {
         if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData(initialData ?? { is_public: false });
         }
     }, [open, initialData]);
@@ -32,7 +33,7 @@ export function ServiceDialog({ open, onOpenChange, onSaved, initialData }: Serv
         try {
             const url = isEdit ? `/api/services/${initialData!.id}` : "/api/services";
             await fetchApi(url, {
-                method: "POST",
+                method: isEdit ? "PUT" : "POST",
                 body: JSON.stringify(formData),
             });
             onSaved();

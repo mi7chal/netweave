@@ -1,6 +1,5 @@
 use crate::handlers::common::{AppError, AppResult, ServiceWithStatus, enrich_services_with_status};
 use crate::models::CreateServicePayload;
-use crate::utils::validation;
 use crate::AppState;
 use axum::{
     extract::{Path, State},
@@ -21,10 +20,8 @@ pub async fn create_service(
     State(state): State<AppState>,
     Json(payload): Json<CreateServicePayload>,
 ) -> AppResult<Json<Uuid>> {
-    validation::validate_name(&payload.name, "Service name", 100)
-        .map_err(AppError::BadRequest)?;
-    validation::validate_url(&payload.base_url).map_err(AppError::BadRequest)?;
-    Ok(Json(state.db.create_service(payload).await?))
+    let service_id = crate::services::ServiceService::create(&state.db, payload).await?;
+    Ok(Json(service_id))
 }
 
 pub async fn get_service(
@@ -44,10 +41,8 @@ pub async fn update_service(
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateServicePayload>,
 ) -> AppResult<Json<bool>> {
-    validation::validate_name(&payload.name, "Service name", 100)
-        .map_err(AppError::BadRequest)?;
-    validation::validate_url(&payload.base_url).map_err(AppError::BadRequest)?;
-    Ok(Json(state.db.update_service(id, payload).await?))
+    let result = crate::services::ServiceService::update(&state.db, id, payload).await?;
+    Ok(Json(result))
 }
 
 pub async fn delete_service(

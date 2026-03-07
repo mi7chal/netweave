@@ -3,7 +3,7 @@
 /// Provides structures and functions to interact with the PostgreSQL database,
 use crate::models::IpStatus;
 use sqlx::postgres::PgPool;
-use sqlx::types::ipnetwork::IpNetwork;
+use ipnetwork::IpNetwork;
 use uuid::Uuid;
 
 pub mod devices;

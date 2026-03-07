@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function Settings() {
     const [homepagePublic, setHomepagePublic] = useState(false);
@@ -33,39 +34,58 @@ export function Settings() {
         }
     };
 
-    if (loading) return <AppLayout><div /></AppLayout>;
-
     return (
         <AppLayout>
             <PageHeader title="Settings" description="Application configuration" />
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="max-w-2xl mt-6"
-            >
-                <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-6 space-y-6">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                                <Globe className="h-5 w-5 text-primary" />
+            {loading ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="max-w-2xl mt-6"
+                >
+                    <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-6 space-y-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 flex-1">
+                                <Skeleton className="h-10 w-10 rounded-xl" />
+                                <div className="flex-1">
+                                    <Skeleton className="h-5 w-32 rounded mb-2" />
+                                    <Skeleton className="h-4 w-64 rounded" />
+                                </div>
                             </div>
-                            <div>
-                                <Label htmlFor="homepage-public" className="text-base font-semibold">
-                                    Public Homepage
-                                </Label>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                    Allow unauthenticated users to view the dashboard homepage
-                                </p>
-                            </div>
+                            <Skeleton className="h-6 w-12 rounded-full" />
                         </div>
-                        <Switch
-                            id="homepage-public"
-                            checked={homepagePublic}
-                            onCheckedChange={handleToggle}
-                        />
                     </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            ) : (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="max-w-2xl mt-6"
+                >
+                    <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-6 space-y-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+                                    <Globe className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <Label htmlFor="homepage-public" className="text-base font-semibold">
+                                        Public Homepage
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                        Allow unauthenticated users to view the dashboard homepage
+                                    </p>
+                                </div>
+                            </div>
+                            <Switch
+                                id="homepage-public"
+                                checked={homepagePublic}
+                                onCheckedChange={handleToggle}
+                            />
+                        </div>
+                    </div>
+                </motion.div>
+            )}
         </AppLayout>
     );
 }

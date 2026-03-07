@@ -4,6 +4,7 @@
 use axum::body::Body;
 use axum::http::Request;
 use netweave;
+use netweave::config::Config;
 use sqlx::postgres::PgPoolOptions;
 use tower::{Service, ServiceExt};
 
@@ -25,7 +26,9 @@ async fn check_oidc_returns_200_and_json() {
         .await
         .expect("connect to test DB");
 
-    let state = netweave::create_state(pool, None)
+    let config = Config::from_env().expect("load config");
+
+    let state = netweave::create_state(config, pool, None)
         .await
         .expect("create_state");
     let app = netweave::create_app(state).await.expect("create_app");
