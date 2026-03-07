@@ -19,7 +19,7 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
     ports:
-      - "${APP_PORT:-5173}:5173"
+      - "${APP_PORT:-8789}:8789"
     depends_on:
       db:
         condition: service_healthy
