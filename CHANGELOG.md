@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-08
+
+### Added
+- **Sidebar state persistence**: Remember open/closed state across sessions
+- **Parent device field**: Support for hierarchical device relationships
+
+### Fixed
+- **UI bugs**: Various fixes for layout and responsiveness issues
+- **Integration error handling**: Improved error messages with HTTP status codes
+- **Device import defaults**: Set default device type to "physical" when importing from integrations
+
 ## [0.1.0] - 2026-03-07
 
 ### Added

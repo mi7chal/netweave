@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Deserializer};
+use serde_json::Value;
 
 // ---------- Deserializers for common patterns ----------
 
@@ -21,9 +22,14 @@ where
     T: std::str::FromStr,
     T::Err: std::fmt::Display,
 {
-    let s: Option<String> = Option::deserialize(deserializer)?;
-    match s {
-        Some(s) if !s.is_empty() => T::from_str(&s).map(Some).map_err(serde::de::Error::custom),
+    let v: Option<Value> = Option::deserialize(deserializer)?;
+    match v {
+        Some(Value::String(s)) if !s.is_empty() => {
+            T::from_str(&s).map(Some).map_err(serde::de::Error::custom)
+        }
+        Some(Value::Number(n)) => T::from_str(&n.to_string())
+            .map(Some)
+            .map_err(serde::de::Error::custom),
         _ => Ok(None),
     }
 }

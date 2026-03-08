@@ -263,7 +263,7 @@ async fn ensure_device_for_mac(state: &AppState, mac: &str, hostname: &str) -> R
     let new_device = devices::ActiveModel {
         id: Set(new_device_id),
         hostname: Set(hostname.to_string()),
-        r#type: Set("OTHER".to_string()),
+        r#type: Set("PHYSICAL".to_string()),
         created_at: Set(Utc::now().into()),
         ..Default::default()
     };
