@@ -3,6 +3,10 @@
 [![CI](https://github.com/mi7chal/netweave/actions/workflows/ci.yml/badge.svg)](https://github.com/mi7chal/netweave/actions/workflows/ci.yml)
 [![Docker](https://github.com/mi7chal/netweave/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mi7chal/netweave/actions/workflows/docker-publish.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/mi7chal/netweave)](https://hub.docker.com/r/mi7chal/netweave)
+[![Docker Image Size](https://img.shields.io/docker/image-size/mi7chal/netweave)](https://hub.docker.com/r/mi7chal/netweave)
+[![GitHub stars](https://img.shields.io/github/stars/mi7chal/netweave)](https://github.com/mi7chal/netweave)
+[![GitHub last commit](https://img.shields.io/github/last-commit/mi7chal/netweave)](https://github.com/mi7chal/netweave)
 
 **The Lightweight, Modern IPAM & HomeLab Dashboard.**
 
@@ -12,13 +16,30 @@ Built for lightweight and convenient network administration. NetWeave is based o
 
 ## ✨ Features
 
+- 🏠︎ **Embedded Homepage**: A customizable public homepage to display your overview, services status and important links.
 - 🔌 **Dynamic IPAM**: Comprehensive IP Address Management with support for static and dynamic leases.
 - 🖥️ **Device Management**: Track all your hardware with MAC address mapping and IP identification.
 - 📡 **AdGuard Integration**: Native sync with AdGuard Home for managing DHCP leases and static assignments.
 - 🛠️ **Service Monitoring**: Keep an eye on your local services with real-time status checks.
 - 🔐 **Authentication**: Username/password and OIDC SSO support with role-based access control.
 - ⚙️ **Settings**: Configurable public homepage and application preferences.
-- 🚀 **Secure & Fast**: Powered by **Rust** (Axum) for memory safety and high-concurrency performance.
+- 🚀 **Secure & Fast**: Powered by **Rust** (Axum) for memory safety and high-concurrency performance. Only uses ~50MB of RAM at idle.
+
+---
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/images/netweave-dashboard-screenshot.png" alt="Dashboard" width="45%">
+  &nbsp; &nbsp;
+  <img src="docs/images/netweave-devices-screenshot.png" alt="Devices" width="45%">
+</p>
+
+<p align="center">
+  <img src="docs/images/netweave-device-screenshot.png" alt="Device Details" width="45%">
+  &nbsp; &nbsp;
+  <img src="docs/images/netweave-integrations-screenshot.png" alt="Integrations" width="45%">
+</p>
 
 ---
 
@@ -39,7 +60,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-NetWeave will be available at `http://localhost:5173`.
+NetWeave will be available at `http://localhost:8789`.
 
 ---
 
@@ -120,6 +141,10 @@ NetWeave welcomes all contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for 
 ## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
+
+## 🤖 AI Transparency
+
+This project utilized AI assistance during development. However, all code was manually reviewed, cleaned up, and tested by the author to ensure reliability and security.
 
 ---
 

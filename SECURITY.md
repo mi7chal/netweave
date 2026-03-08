@@ -12,14 +12,14 @@ If you discover a security vulnerability in NetWeave, please report it responsib
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email **[security@mi7chal.dev](mailto:security@mi7chal.dev)** with:
+Instead, please email **[mi7chal.dev@gmail.com](mailto:mi7chal.dev@gmail.com)** with:
 
 1. A description of the vulnerability
 2. Steps to reproduce
 3. Potential impact
 4. Suggested fix (if any)
 
-You should receive a response within **48 hours**. We will work with you to understand and address the issue before any public disclosure.
+You should receive a response within **48 hours**. Author will work with you to understand and address the issue before any public disclosure. 
 
 ## Security Best Practices for Deployment
 
