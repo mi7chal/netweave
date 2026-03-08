@@ -62,6 +62,10 @@ docker compose up -d
 
 NetWeave will be available at `http://localhost:8789`.
 
+### Kubernetes (Advanced)
+
+For example Kubernetes deployment, see [My Kubernetes Setup](https://github.com/mi7chal/homelab/tree/main/k8s/apps/netweave).
+
 ---
 
 ## ⚙️ Configuration
