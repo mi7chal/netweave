@@ -63,6 +63,7 @@ impl Nullable for MacAddress {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeviceType {
     Physical,
     Vm,
@@ -91,7 +92,8 @@ impl From<&str> for DeviceType {
             "SWITCH" => Self::Switch,
             "AP" => Self::Ap,
             "ROUTER" => Self::Router,
-            _ => Self::Other,
+            "OTHER" => Self::Other,
+            _ => Self::Physical,
         }
     }
 }
@@ -161,10 +163,10 @@ mod tests {
     }
 
     #[test]
-    fn device_type_unknown_falls_back_to_other() {
-        assert_eq!(DeviceType::from("UNKNOWN"), DeviceType::Other);
-        assert_eq!(DeviceType::from(""), DeviceType::Other);
-        assert_eq!(DeviceType::from("random"), DeviceType::Other);
+    fn device_type_unknown_falls_back_to_physical() {
+        assert_eq!(DeviceType::from("UNKNOWN"), DeviceType::Physical);
+        assert_eq!(DeviceType::from(""), DeviceType::Physical);
+        assert_eq!(DeviceType::from("random"), DeviceType::Physical);
     }
 
     #[test]

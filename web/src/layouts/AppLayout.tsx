@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
-import { LogIn } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -23,6 +24,7 @@ function GithubMark(props: React.SVGProps<SVGSVGElement>) {
 
 export function AppLayout({ children, showNavigation = true }: AppLayoutProps) {
   const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
 
   if (!showNavigation) {
     // Public view without sidebar
@@ -32,15 +34,30 @@ export function AppLayout({ children, showNavigation = true }: AppLayoutProps) {
         <div className="absolute inset-0 z-0 bg-premium-grid [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-40 pointer-events-none" />
 
         <header className="flex h-14 shrink-0 items-center justify-end gap-2 border-b/50 bg-background/80 backdrop-blur-xl px-4 sticky top-0 z-50">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/login")}
-            className="gap-2"
-          >
-            <LogIn className="h-4 w-4" />
-            Login
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              className="gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/login")}
+              className="gap-2"
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Button>
+          )}
         </header>
 
         <main className="flex-1 w-full mx-auto p-4 md:p-6 lg:p-8 z-10 relative overflow-y-auto scrollbar-hide flex flex-col">
