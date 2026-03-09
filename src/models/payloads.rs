@@ -48,6 +48,8 @@ pub struct CreateServicePayload {
     pub base_url: String,
     #[serde(default, deserialize_with = "validation::deserialize_optional_string")]
     pub device_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "validation::deserialize_optional_string")]
+    pub health_endpoint: Option<String>,
     #[serde(default)]
     pub is_public: bool,
     #[serde(default, deserialize_with = "validation::deserialize_optional_string")]
