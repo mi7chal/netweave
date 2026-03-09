@@ -83,6 +83,7 @@ pub struct DashboardService {
     pub id: Uuid,
     pub name: String,
     pub base_url: String,
+    pub health_endpoint: Option<String>,
     pub is_public: bool,
     pub total_checks: i32,
     pub successful_checks: i32,
