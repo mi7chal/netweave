@@ -29,7 +29,16 @@ async fn check_all_services(state: &AppState, client: &reqwest::Client) -> anyho
 
     // todo consider if may be executed recurently and check if db pool is not kept for too long
     for service in services {
-        let url = service.base_url;
+        let url = if let Some(endpoint) = &service.health_endpoint {
+            format!(
+                "{}/{}",
+                service.base_url.trim_end_matches('/'),
+                endpoint.trim_start_matches('/')
+            )
+        } else {
+            service.base_url
+        };
+
         let (status, is_success) = check_service_status_with_retry(client, &url).await;
 
         state

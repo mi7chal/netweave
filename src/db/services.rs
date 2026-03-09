@@ -20,6 +20,7 @@ impl Db {
                 id: service.id,
                 name: service.name,
                 base_url: service.base_url,
+                health_endpoint: service.health_endpoint,
                 is_public: service.is_public.unwrap_or(false),
                 total_checks: service.total_checks.unwrap_or(0),
                 successful_checks: service.successful_checks.unwrap_or(0),
@@ -49,6 +50,7 @@ impl Db {
             id: Set(new_id),
             name: Set(params.name),
             base_url: Set(params.base_url),
+            health_endpoint: Set(params.health_endpoint),
             device_id: Set(params.device_id),
             is_public: Set(Some(params.is_public)),
             icon_url: Set(params.icon_url),
@@ -72,6 +74,7 @@ impl Db {
 
         service.name = Set(params.name);
         service.base_url = Set(params.base_url);
+        service.health_endpoint = Set(params.health_endpoint);
         service.device_id = Set(params.device_id);
         service.is_public = Set(Some(params.is_public));
         service.icon_url = Set(params.icon_url);

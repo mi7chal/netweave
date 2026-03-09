@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-03-09
+
+## Fixed
+- **Healthcheks failing**: Resolved issues with service health checks not executing properly when main page was returning `4XX` or `3XX` status codes. Added optional healthcheck endpoint.
+
 ## [0.1.1] - 2026-03-08
 
 ### Added
