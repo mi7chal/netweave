@@ -27,6 +27,7 @@ pub async fn start_monitoring(state: AppState) {
 async fn check_all_services(state: &AppState, client: &reqwest::Client) -> anyhow::Result<()> {
     let services = state.db.list_dashboard_services().await?;
 
+    // todo consider if may be executed recurently and check if db pool is not kept for too long
     for service in services {
         let url = service.base_url;
         let (status, is_success) = check_service_status_with_retry(client, &url).await;
@@ -61,6 +62,7 @@ async fn check_service_status_with_retry(
 ) -> (ServiceStatus, bool) {
     for attempt in 1..=RETRY_ATTEMPTS {
         match client.get(url).send().await {
+            // todo what if service returns 3xx or 4xx? what would plex return?
             Ok(response) if response.status().is_success() => return (ServiceStatus::Up, true),
             Ok(response) => {
                 if response.status().is_server_error() && attempt < RETRY_ATTEMPTS {
