@@ -56,6 +56,11 @@ The backend will be available at `http://localhost:8789` and the frontend dev se
 3. **Ensure CI passes** — formatting, linting, and builds must succeed
 4. **Open a PR** against `main` with a clear description of what and why
 
+## Git Hooks
+
+This repository uses `prek` (Rust-native pre-commit runner) with native `prek.toml`. All checks should pass
+before commiting. For more info check [prek docs](https://prek.j178.dev/).
+
 ## Reporting Bugs
 
 Please use the [Bug Report](https://github.com/mi7chal/netweave/issues/new?template=bug_report.md) issue template.
