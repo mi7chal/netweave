@@ -47,21 +47,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Cargo.toml == package.json
+      - name: Check versions (Cargo/package full, compose major.minor)
         run: |
           CARGO_VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           PKG_VERSION=$(node -e "process.stdout.write(require('./web/package.json').version)")
+          COMPOSE_VERSION=$(grep -E 'image: .*/netweave:' compose.yaml | head -1 | sed 's/.*:\(.*\)/\1/')
+          CARGO_MINOR_VERSION=$(sed -E 's/^([0-9]+\.[0-9]+)\.[0-9]+$/\1/' <<< "$CARGO_VERSION")
 
           echo "Cargo.toml  : $CARGO_VERSION"
           echo "package.json: $PKG_VERSION"
+          echo "compose.yaml: $COMPOSE_VERSION"
 
           if [[ "$CARGO_VERSION" != "$PKG_VERSION" ]]; then
             echo ""
-            echo "ERROR: version mismatch!"
-            echo "  Run: ./scripts/bump-version.sh <version> to keep them in sync."
+            echo "ERROR: version mismatch (Cargo.toml vs package.json)!"
+            echo "  Keep them synced via release-plz (release-pr/update flow)."
             exit 1
           fi
-          echo "✓ Versions match: $CARGO_VERSION"
+
+          if [[ "$CARGO_MINOR_VERSION" != "$COMPOSE_VERSION" ]]; then
+            echo ""
+            echo "ERROR: version mismatch (Cargo major.minor vs compose.yaml)!"
+            echo "  Expected: $CARGO_MINOR_VERSION"
+            echo "  Found:    $COMPOSE_VERSION"
+            exit 1
+          fi
+
+          echo "✓ Versions match:"
+          echo "  Cargo/package : $CARGO_VERSION"
+          echo "  compose.yaml  : $COMPOSE_VERSION (from Cargo $CARGO_MINOR_VERSION)"
 
   frontend:
     name: Frontend (React)

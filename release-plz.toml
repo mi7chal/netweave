@@ -1,0 +1,26 @@
+[workspace]
+publish = false
+allow_dirty = false
+repo_url = "https://github.com/mi7chal/netweave"
+
+
+[[package]]
+name = "netweave"
+
+# Sync package.json
+[[package.pre_release_replacements]]
+file = "web/package.json"
+search = '"version":\s*"[^"]*"'
+replace = '"version": "{{version}}"'
+
+# Sync compose.yaml
+[[package.pre_release_replacements]]
+file = "compose.yaml"
+search = 'mi7chal/netweave:[^\s]*'
+replace = 'mi7chal/netweave:{{version}}'
+
+# Keep compose.yaml image tag in x.x format
+[[package.pre_release_replacements]]
+file = "compose.yaml"
+search = '(mi7chal/netweave:[0-9]+\.[0-9]+)\.[0-9]+'
+replace = '$1'

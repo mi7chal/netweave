@@ -1,0 +1,33 @@
+[[repos]]
+repo = "builtin"
+
+[[repos.hooks]]
+id = "trailing-whitespace"
+stages = ["pre-commit"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "cargo-fmt"
+name = "cargo fmt"
+language = "system"
+entry = "cargo fmt --all"
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "web-pnpm-lint"
+name = "web pnpm lint"
+language = "system"
+entry = "cd web && pnpm lint"
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "cargo-clippy"
+name = "cargo clippy (deny warnings)"
+language = "system"
+entry = "cargo clippy --all-targets -- -D warnings"
+pass_filenames = false
+stages = ["pre-push"]
