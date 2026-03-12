@@ -8,6 +8,7 @@ repository = "https://github.com/mi7chal/netweave"
 homepage = "https://github.com/mi7chal/netweave"
 authors = ["mi7chal"]
 rust-version = "1.94"
+publish = false
 
 [dependencies]
 # Web Framework

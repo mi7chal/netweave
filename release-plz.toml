@@ -1,0 +1,20 @@
+[workspace]
+publish = false
+allow_dirty = false
+repo_url = "https://github.com/mi7chal/netweave"
+
+
+[[package]]
+name = "netweave"
+
+# 1. Synchronizacja wersji z web/package.json
+[[package.pre_release_replacements]]
+file = "web/package.json"
+search = '"version":\s*"[^"]*"'
+replace = '"version": "{{version}}"'
+
+# 2. Synchronizacja wersji w compose.yaml
+[[package.pre_release_replacements]]
+file = "compose.yaml"
+search = 'mi7chal/netweave:[^\s]*'
+replace = 'mi7chal/netweave:{{version}}'

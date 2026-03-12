@@ -1,4 +1,6 @@
 #!/bin/sh
+# git-clean.sh - removes local branches that have been removed from the remote repository
+# Usage: ./scripts/git-clean.sh
 
 echo "Checking for removed branches.."
 
