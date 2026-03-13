@@ -86,9 +86,12 @@ jobs:
           git tag "${tag}"
           git push origin "${branch}" "${tag}"
 
+          # Extract this version's changelog section for PR body
+          body=$(awk "/^## \[${new_ver}\]/{found=1; next} /^## \[/{if(found) exit} found" CHANGELOG.md)
+          pr_body=$(printf "## Release v%s\n\n%s" "${new_ver}" "${body}")
+
           gh pr create \
             --base main \
             --head "${branch}" \
             --title "release: v${new_ver}" \
-            --body "## Release v${new_ver}"$'\n\n'"$(git cliff --config git-cliff.toml --unreleased --strip header)" \
-            --label release
+            --body "${pr_body}"
