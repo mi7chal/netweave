@@ -1,4 +1,4 @@
-# On push to main: if there are feat/fix/hotfix commits since last tag, open a release PR (one commit + changelog + tag on PR branch). No crates.io.
+# On push to main: if there are feat/fix/hotfix commits since last tag, open a release PR.
 
 name: Release
 
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    name: Release PR + tag
+    name: Release PR
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,25 +58,22 @@ jobs:
         env:
           GITHUB_REPO: ${{ github.repository }}
 
-      - name: Open release PR + tag
+      - name: Open release PR
         if: steps.plan.outputs.releasable == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           new_ver="${{ steps.plan.outputs.new_version }}"
-          tag="v${new_ver}"
-          branch="release/${tag}"
+          branch="release/v${new_ver}"
 
           # Skip if a release PR already exists for this version
           if gh pr list --head "${branch}" --json number --jq '.[0].number' 2>/dev/null | grep -q .; then
-            echo "::notice::Release PR for ${tag} already exists, skipping"
+            echo "::notice::Release PR for v${new_ver} already exists, skipping"
             exit 0
           fi
 
-          # Clean up stale tag/branch from any previous failed run
-          git push origin --delete "refs/tags/${tag}" 2>/dev/null || true
+          # Clean up stale branch from any previous failed run
           git push origin --delete "${branch}" 2>/dev/null || true
-          git tag -d "${tag}" 2>/dev/null || true
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -91,8 +88,7 @@ jobs:
 
           git add Cargo.toml web/package.json compose.yaml CHANGELOG.md
           git commit -m "chore(release): v${new_ver}"
-          git tag "${tag}"
-          git push origin "${branch}" "${tag}"
+          git push origin "${branch}"
 
           # Extract this version's changelog section for PR body
           body=$(awk "/^## \[${new_ver}\]/{found=1; next} /^## \[/{if(found) exit} found" CHANGELOG.md)
