@@ -1,3 +1,28 @@
+## [0.1.3] - 2026-03-13
+
+### Fixed
+
+- Bumped versions tailwind not loading styles error fixed (#15)
+
+
+### Miscellaneous
+
+- Release-plz -> cargo-release migration (#13)
+
+- Version bumps (#14)
+
+- Release ci fix (#16)
+
+- Release fix (#17)
+
+- Fix release ci (#18)
+
+- Release ci partial execution prevention (#19)
+
+- Ci release versions sync (#21)
+
+- Tag confilict handling (#22)
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
