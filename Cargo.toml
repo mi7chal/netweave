@@ -47,7 +47,7 @@ mac_address = { version = "1.1", features = ["serde"] }
 # Auth
 tower-sessions = { version = "0.13", features = ["signed"] }
 tower-sessions-sqlx-store = { version = "0.14", features = ["postgres"] }
-openidconnect = "3.4"                                                     # OIDC Support
+openidconnect = "3.5"                                                     # OIDC Support
 bcrypt = "0.15"
 anyhow = "1.0"
 
@@ -55,9 +55,9 @@ anyhow = "1.0"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.11", features = [
+reqwest = { version = "0.13", features = [
     "json",
-    "rustls-tls",
+    "rustls",
     "cookies",
 ] } # For Integrations
 async-trait = "0.1.89"
