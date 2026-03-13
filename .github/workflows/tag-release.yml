@@ -1,0 +1,41 @@
+# When a release PR is merged: tag the commit and create a GitHub Release.
+
+name: Tag & GitHub Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  tag-and-release:
+    name: Tag + GitHub Release
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create tag + release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from the branch name: release/v0.1.3 -> v0.1.3
+          tag="${GITHUB_HEAD_REF#release/}"
+          ver="${tag#v}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag "${tag}"
+          git push origin "${tag}"
+
+          # Extract this version's changelog section for release notes
+          body=$(awk "/^## \[${ver}\]/{found=1; next} /^## \[/{if(found) exit} found" CHANGELOG.md)
+
+          gh release create "${tag}" \
+            --title "${tag}" \
+            --notes "${body}"
