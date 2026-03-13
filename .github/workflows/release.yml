@@ -58,26 +58,14 @@ jobs:
         env:
           GITHUB_REPO: ${{ github.repository }}
 
-      - name: cargo-release
+      - name: Open release PR + tag
         if: steps.plan.outputs.releasable == 'true'
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-release
-
-      - name: Open PR
-        if: steps.plan.outputs.releasable == 'true'
-        id: pr
-        uses: cargo-bins/release-pr@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          version: ${{ steps.plan.outputs.level }}
-          pr-label: release
-
-      - name: Tag PR branch
-        if: steps.plan.outputs.releasable == 'true' && steps.pr.outputs['pr-branch'] != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="v${{ steps.plan.outputs.new_version }}"
-          branch="${{ steps.pr.outputs['pr-branch'] }}"
+          new_ver="${{ steps.plan.outputs.new_version }}"
+          tag="v${new_ver}"
+          branch="release/${tag}"
 
           # Skip if tag already exists (idempotent for re-runs)
           if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then
@@ -85,9 +73,22 @@ jobs:
             exit 0
           fi
 
-          git fetch origin "${branch}"
-          git checkout "${branch}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "${branch}"
+
+          # Bump version in Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${new_ver}\"/" Cargo.toml
+
+          git add Cargo.toml CHANGELOG.md
+          git commit -m "chore(release): v${new_ver}"
           git tag "${tag}"
-          git push origin "${tag}"
+          git push origin "${branch}" "${tag}"
+
+          gh pr create \
+            --base main \
+            --head "${branch}" \
+            --title "release: v${new_ver}" \
+            --body "## Release v${new_ver}"$'\n\n'"$(git cliff --config git-cliff.toml --unreleased --strip header)" \
+            --label release
