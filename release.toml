@@ -1,0 +1,15 @@
+# cargo-release: no crates.io publish, tag only, single release commit.
+# Changelog + compose image tag are updated in scripts/release-hook.sh (git-cliff + major.minor).
+
+allow-branch = ["main"]
+publish = false
+tag = true
+tag-name = "v{{version}}"
+
+# Sync package.json version (compose.yaml is updated in pre-release-hook to use major.minor tag).
+pre-release-replacements = [
+  { file = "web/package.json", search = '"version": "[^"]*"', replace = '"version": "{{version}}"' },
+]
+
+# Update CHANGELOG with git-cliff and compose.yaml image tag to major.minor.
+pre-release-hook = ["bash", "scripts/release-hook.sh"]
