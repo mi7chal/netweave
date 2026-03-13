@@ -82,10 +82,13 @@ jobs:
 
           git checkout -b "${branch}"
 
-          # Bump version in Cargo.toml
+          # Bump version in Cargo.toml, web/package.json, and compose.yaml
           sed -i "s/^version = \".*\"/version = \"${new_ver}\"/" Cargo.toml
+          sed -i "s/\"version\": \".*\"/\"version\": \"${new_ver}\"/" web/package.json
+          short_ver="${new_ver%.*}"  # strip patch: 0.1.3 -> 0.1
+          sed -i "s|mi7chal/netweave:.*|mi7chal/netweave:${short_ver}|" compose.yaml
 
-          git add Cargo.toml CHANGELOG.md
+          git add Cargo.toml web/package.json compose.yaml CHANGELOG.md
           git commit -m "chore(release): v${new_ver}"
           git tag "${tag}"
           git push origin "${branch}" "${tag}"
