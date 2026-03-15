@@ -1,3 +1,5 @@
+// todo check if we can replace some types/consts with enums
+// also check if we can use undefined instead of null for optional fields
 export interface Service {
   id: string;
   device_id: string | null;
@@ -29,7 +31,7 @@ export interface CreateServicePayload {
   icon_url?: string | null;
 }
 
-// --- Devices & Networks ---
+// Devices & Networks
 
 export const DeviceType = {
   Physical: "PHYSICAL",

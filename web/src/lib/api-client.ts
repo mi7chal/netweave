@@ -1,5 +1,7 @@
 import { toast } from "sonner";
 
+// todo refactor this file
+
 // Simple event bus/callback for non-component files to trigger UI updates
 let onBackendDown: (() => void) | null = null;
 
