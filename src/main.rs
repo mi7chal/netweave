@@ -1,6 +1,7 @@
 use netweave::config::Config;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
+use std::time::Duration;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -56,6 +57,7 @@ async fn main() {
 
     tokio::spawn(netweave::monitoring::start_monitoring(state.clone()));
     tokio::spawn(netweave::integrations::run_sync_task(state.clone()));
+    tokio::spawn(oidc_retry_loop(state.clone()));
 
     let app = netweave::create_app(state).await.unwrap_or_else(|e| {
         eprintln!("ERROR: {}", e);
@@ -84,6 +86,32 @@ async fn main() {
     }
 
     tracing::info!("Server shut down gracefully.");
+}
+
+async fn oidc_retry_loop(state: netweave::AppState) {
+    if state.config.oidc_config.is_none() {
+        return;
+    }
+
+    let retry_delay = Duration::from_secs(30);
+
+    loop {
+        if state.oidc.read().await.is_none() {
+            if let Some(oidc_config) = state.config.oidc_config.as_ref() {
+                match netweave::auth::oidc::OidcService::from_config(oidc_config).await {
+                    Ok(service) => {
+                        *state.oidc.write().await = Some(service);
+                        tracing::info!("OIDC service initialized by retry loop.");
+                    }
+                    Err(e) => {
+                        tracing::warn!("OIDC retry failed, will retry: {}", e);
+                    }
+                }
+            }
+        }
+
+        tokio::time::sleep(retry_delay).await;
+    }
 }
 
 async fn shutdown_signal() {

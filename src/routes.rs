@@ -3,6 +3,7 @@ use crate::handlers;
 use crate::AppState;
 use axum::{
     extract::{Request, State},
+    http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{delete, get, post, put},
@@ -13,34 +14,36 @@ use tower_http::services::{ServeDir, ServeFile};
 use tower_sessions::{Expiry, Session, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
 
+/// Authentication middleware. Authentication is based on asymmetricaly encrypted JWT, check [`auth`] for more info.
 async fn auth_middleware(
-    State(_): State<AppState>,
+    _: State<AppState>,
     session: Session,
     mut request: Request,
     next: Next,
 ) -> Response {
-    let user: Option<AuthUser> = match session.get(AUTH_SESSION_KEY).await {
-        Ok(u) => u,
-        Err(e) => {
-            tracing::warn!("Failed to read auth session: {}", e);
-            None
-        }
+    // todo clean this
+    let Ok(Some(user)) = session.get::<AuthUser>(AUTH_SESSION_KEY).await else {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     };
 
-    if let Some(user) = user {
-        request.extensions_mut().insert(user);
-        next.run(request).await
-    } else {
-        (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response()
-    }
+    request.extensions_mut().insert(user);
+    next.run(request).await
 }
 
+/// Additional auth middleware for pages that may or may not require authentication. When `homepage_public` setting
+/// is enabled this middleware skips authentication.
 async fn optional_auth_middleware(
-    State(state): State<AppState>,
+    state: State<AppState>,
     session: Session,
     mut request: Request,
     next: Next,
 ) -> Response {
+    // attempt to authenticate, ignore on error
+    if let Ok(Some(user)) = session.get::<AuthUser>(AUTH_SESSION_KEY).await {
+        request.extensions_mut().insert(user);
+        return next.run(request).await;
+    }
+
     // Check if homepage is public
     let homepage_public = state
         .db
@@ -56,23 +59,11 @@ async fn optional_auth_middleware(
         return next.run(request).await;
     }
 
-    // Otherwise, require authentication
-    let user: Option<AuthUser> = match session.get(AUTH_SESSION_KEY).await {
-        Ok(u) => u,
-        Err(e) => {
-            tracing::warn!("Failed to read auth session: {}", e);
-            None
-        }
-    };
-
-    if let Some(user) = user {
-        request.extensions_mut().insert(user);
-        next.run(request).await
-    } else {
-        (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response()
-    }
+    // Otherwise, run standard authentication middleware
+    return auth_middleware(state, session, request, next).await;
 }
 
+/// Admin access check
 async fn require_admin(request: Request, next: Next) -> Response {
     let is_admin = request
         .extensions()
@@ -81,16 +72,17 @@ async fn require_admin(request: Request, next: Next) -> Response {
         .unwrap_or(false);
 
     if is_admin {
-        next.run(request).await
-    } else {
-        (
-            axum::http::StatusCode::FORBIDDEN,
-            "Forbidden: Admin access required",
-        )
-            .into_response()
+        return next.run(request).await;
     }
+
+    (
+        axum::http::StatusCode::FORBIDDEN,
+        "Forbidden: Admin access required",
+    )
+        .into_response()
 }
 
+/// As we all love cors, it configures it
 fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
     use axum::http::{header, Method};
 
@@ -120,6 +112,9 @@ fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
             .allow_credentials(true)
     }
 }
+
+// SECTION: routes
+// todo refactor
 
 fn dashboard_routes(state: AppState) -> Router<AppState> {
     Router::new()
@@ -244,6 +239,8 @@ fn auth_protected_api_routes(state: AppState) -> Router<AppState> {
         .route_layer(middleware::from_fn_with_state(state, auth_middleware))
 }
 
+/// Creates main app router
+// todo refactor
 pub async fn create_router(state: AppState) -> anyhow::Result<Router> {
     let session_store = PostgresStore::new(state.db.pool.clone());
     session_store

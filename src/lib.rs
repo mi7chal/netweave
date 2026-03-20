@@ -30,15 +30,17 @@ pub enum ServiceStatus {
     Unknown,
 }
 
+/// Geeneral app state object. It should contain all app data used during runtime (mutable and not).
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
     pub config: Config,
-    pub oidc: Option<OidcService>,
+    pub oidc: Arc<RwLock<Option<OidcService>>>,
     pub service_statuses: Arc<RwLock<HashMap<Uuid, ServiceStatus>>>,
     pub login_rate_limiter: LoginRateLimiter,
 }
 
+/// State builder
 pub async fn create_state(
     config: Config,
     pool: PgPool,
@@ -48,6 +50,7 @@ pub async fn create_state(
     let service_statuses = Arc::new(RwLock::new(HashMap::new()));
     let login_rate_limiter = LoginRateLimiter::new(10, Duration::from_secs(60));
 
+    // Runs migrations, it should allow to seamless version updates or database creation.
     sqlx::migrate!("./migrations")
         .run(&db.pool)
         .await
@@ -58,12 +61,12 @@ pub async fn create_state(
     Ok(AppState {
         db,
         config,
-        oidc,
+        oidc: Arc::new(RwLock::new(oidc)),
         service_statuses,
         login_rate_limiter,
     })
 }
-
+// Builds app router
 pub async fn create_app(state: AppState) -> anyhow::Result<Router> {
     routes::create_router(state).await
 }
