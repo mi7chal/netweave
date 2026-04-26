@@ -12,7 +12,7 @@ publish = false
 
 [dependencies]
 # Web Framework
-axum = "0.7"                                                         # Stable version
+axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
@@ -47,7 +47,7 @@ mac_address = { version = "1.1", features = ["serde"] }
 # Auth
 tower-sessions = { version = "0.13", features = ["signed"] }
 tower-sessions-sqlx-store = { version = "0.14", features = ["postgres"] }
-openidconnect = "3.5"                                                     # OIDC Support
+openidconnect = "4.0"
 bcrypt = "0.15"
 anyhow = "1.0"
 
@@ -59,11 +59,11 @@ reqwest = { version = "0.13", features = [
     "json",
     "rustls",
     "cookies",
-] } # For Integrations
+] }
 async-trait = "0.1.89"
-aes-gcm = "0.10.3"
-base64 = "0.22.1"
-rand = "0.8.5"
-hex = "0.4.3"
+aes-gcm = "0.10"
+base64 = "0.22"
+rand = "0.8"
+hex = "0.4"
 ipnetwork = { version = "0.20", features = ["serde"] }
 sea-query = "0.32"

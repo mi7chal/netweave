@@ -1,15 +1,23 @@
 use crate::config::OidcConfig;
 use anyhow::Result;
 use openidconnect::core::{CoreClient, CoreProviderMetadata, CoreResponseType};
-use openidconnect::reqwest::async_http_client;
+use openidconnect::reqwest;
 use openidconnect::{
-    AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, RedirectUrl, Scope,
-    TokenResponse,
+    AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointMaybeSet, EndpointNotSet,
+    EndpointSet, IssuerUrl, Nonce, RedirectUrl, Scope,
 };
 
 #[derive(Clone)]
 pub struct OidcService {
-    client: CoreClient,
+    client: CoreClient<
+        EndpointSet,
+        EndpointNotSet,
+        EndpointNotSet,
+        EndpointNotSet,
+        EndpointMaybeSet,
+        EndpointMaybeSet,
+    >,
+    http_client: reqwest::Client,
 }
 
 impl OidcService {
@@ -27,14 +35,21 @@ impl OidcService {
         let client_id = ClientId::new(config.client_id.clone());
         let client_secret = ClientSecret::new(config.client_secret.clone());
         let redirect_url = RedirectUrl::new(config.redirect_uri.clone())?;
+        let http_client = reqwest::ClientBuilder::new()
+            // Prevent SSRF vectors through automatic redirect following.
+            .redirect(reqwest::redirect::Policy::none())
+            .build()?;
 
         // Discover provider metadata, this automatically fetches the JWK set for signature verification
-        let provider = CoreProviderMetadata::discover_async(issuer_url, async_http_client).await?;
+        let provider = CoreProviderMetadata::discover_async(issuer_url, &http_client).await?;
 
         let client = CoreClient::from_provider_metadata(provider, client_id, Some(client_secret))
             .set_redirect_uri(redirect_url);
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            http_client,
+        })
     }
 
     pub fn authorization_url(&self) -> (openidconnect::url::Url, CsrfToken, Nonce) {
@@ -61,10 +76,12 @@ impl OidcService {
         let token = self
             .client
             .exchange_code(AuthorizationCode::new(code))
-            .request_async(async_http_client)
+            .map_err(|e| anyhow::anyhow!("OIDC configuration error: {e}"))?
+            .request_async(&self.http_client)
             .await?;
 
         let id_token = token
+            .extra_fields()
             .id_token()
             .ok_or_else(|| anyhow::anyhow!("Server did not return an ID token"))?;
 

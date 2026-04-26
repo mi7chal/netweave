@@ -7,10 +7,10 @@ use netweave::config::Config;
 use serde_json::{json, Value};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 use tower::{Service, ServiceExt};
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+static ENV_LOCK: Mutex<()> = Mutex::const_new(());
 
 async fn app_service(
 ) -> tower::util::BoxCloneService<Request<Body>, axum::response::Response, std::convert::Infallible>
@@ -88,7 +88,7 @@ async fn login(
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn unauthenticated_protected_route_returns_401() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     let mut service = app_service().await;
 
     let req = Request::get("http://localhost/api/services")
@@ -102,7 +102,7 @@ async fn unauthenticated_protected_route_returns_401() {
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn public_settings_returns_only_public_keys() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     let mut service = app_service().await;
 
     let req = Request::get("http://localhost/api/settings/public")
@@ -129,7 +129,7 @@ async fn public_settings_returns_only_public_keys() {
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn admin_can_update_settings_via_authenticated_flow() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     env::set_var("DEFAULT_ADMIN_USER", "integration-admin");
     env::set_var("DEFAULT_ADMIN_PASSWORD", "integration-admin-password");
     let mut service = app_service().await;
@@ -165,7 +165,7 @@ async fn admin_can_update_settings_via_authenticated_flow() {
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn authenticated_me_returns_logged_in_user() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     env::set_var("DEFAULT_ADMIN_USER", "integration-admin");
     env::set_var("DEFAULT_ADMIN_PASSWORD", "integration-admin-password");
     let mut service = app_service().await;
@@ -204,7 +204,7 @@ async fn authenticated_me_returns_logged_in_user() {
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn me_without_session_returns_401() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     let mut service = app_service().await;
 
     let me_req = Request::get("http://localhost/api/auth/me")
@@ -224,7 +224,7 @@ async fn me_without_session_returns_401() {
 #[tokio::test]
 #[ignore = "requires DATABASE_URL and running Postgres"]
 async fn viewer_user_is_forbidden_from_admin_routes() {
-    let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+    let _guard = ENV_LOCK.lock().await;
     env::set_var("DEFAULT_ADMIN_USER", "integration-admin");
     env::set_var("DEFAULT_ADMIN_PASSWORD", "integration-admin-password");
     let mut service = app_service().await;

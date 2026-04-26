@@ -61,6 +61,22 @@ The backend will be available at `http://localhost:8789` and the frontend dev se
 This repository uses `prek` (Rust-native pre-commit runner) with native `prek.toml`. All checks should pass
 before commiting. For more info check [prek docs](https://prek.j178.dev/).
 
+Install hooks locally:
+
+```bash
+cargo install prek
+prek install
+```
+
+Current hook checks include:
+- `cargo fmt --all --check`
+- `cargo clippy --all-targets -- -D warnings`
+- `cargo test`
+- `cargo audit`
+- `cd web && pnpm lint`
+- `cd web && pnpm test --run`
+- `cd web && pnpm build`
+
 ## Reporting Bugs
 
 Please use the [Bug Report](https://github.com/mi7chal/netweave/issues/new?template=bug_report.md) issue template.
