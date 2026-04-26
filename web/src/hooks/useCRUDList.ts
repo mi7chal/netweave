@@ -4,7 +4,8 @@ import { fetchApi } from '@/lib/api-client';
 
 export interface UseCRUDListOptions {
   endpoint: string;
-  onError?: (error: Error) => void;
+  onLoadError?: (error: Error) => void;
+  onMutationError?: (error: Error) => void;
   revalidateOnFocus?: boolean;
 }
 
@@ -25,7 +26,12 @@ export interface UseCRUDListResult<T> {
 export function useCRUDList<T extends { id?: string }>(
   options: UseCRUDListOptions
 ): UseCRUDListResult<T> {
-  const { endpoint, onError, revalidateOnFocus = false } = options;
+  const {
+    endpoint,
+    onLoadError,
+    onMutationError,
+    revalidateOnFocus = false,
+  } = options;
 
   const { data, error, isLoading, mutate: swrMutate } = useSWR(
     endpoint,
@@ -33,35 +39,45 @@ export function useCRUDList<T extends { id?: string }>(
     {
       revalidateOnFocus,
       dedupingInterval: 60000,
+      onError: (err) => {
+        const normalized = err instanceof Error ? err : new Error(String(err));
+        if (onLoadError) onLoadError(normalized);
+        console.error(`Load error in ${endpoint}:`, normalized);
+      },
     }
   );
 
   const handleError = useCallback(
     (err: Error) => {
-      if (onError) onError(err);
-      console.error(`Error in ${endpoint}:`, err);
+      if (onMutationError) onMutationError(err);
+      console.error(`Mutation error in ${endpoint}:`, err);
     },
-    [endpoint, onError]
+    [endpoint, onMutationError]
   );
 
   const mrefresh = useCallback(async () => {
     try {
       await swrMutate();
     } catch (err) {
-      handleError(err instanceof Error ? err : new Error(String(err)));
+      const error = err instanceof Error ? err : new Error(String(err));
+      if (onLoadError) onLoadError(error);
+      console.error(`Refresh error in ${endpoint}:`, error);
     }
-  }, [swrMutate, handleError]);
+  }, [swrMutate, onLoadError, endpoint]);
 
   const add = useCallback(
     async (item: T) => {
       try {
         await fetchApi(endpoint, {
           method: 'POST',
+          silent: true,
           body: JSON.stringify(item),
         });
         await swrMutate();
       } catch (err) {
-        handleError(err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        handleError(error);
+        throw error;
       }
     },
     [endpoint, swrMutate, handleError]
@@ -70,10 +86,13 @@ export function useCRUDList<T extends { id?: string }>(
   const remove = useCallback(
     async (id: string) => {
       try {
-        await fetchApi(`${endpoint}/${id}`, { method: 'DELETE' });
+        await fetchApi(`${endpoint}/${id}`, { method: 'DELETE', silent: true });
+        // Explicit revalidation to keep list UI and count badges in sync.
         await swrMutate();
       } catch (err) {
-        handleError(err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        handleError(error);
+        throw error;
       }
     },
     [endpoint, swrMutate, handleError]
@@ -84,11 +103,14 @@ export function useCRUDList<T extends { id?: string }>(
       try {
         await fetchApi(`${endpoint}/${id}`, {
           method: 'PUT',
+          silent: true,
           body: JSON.stringify(item),
         });
         await swrMutate();
       } catch (err) {
-        handleError(err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        handleError(error);
+        throw error;
       }
     },
     [endpoint, swrMutate, handleError]

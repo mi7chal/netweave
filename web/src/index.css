@@ -1,9 +1,7 @@
 @import "tailwindcss";
 
-/*todo migrate config to v4*/
 @config "../tailwind.config.js";
 
-/*todo migrate dark mode management to v4*/
 @layer base {
     :root {
         --background: 0 0% 100%;
@@ -78,15 +76,16 @@
         scrollbar-width: none;
         /* Firefox */
     }
+
+    .bg-premium-grid {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    }
 }
 
 @layer base {
-    * {
-        /*@apply border-border;*/
-    }
-
     body {
-        /*@apply bg-background text-foreground overflow-hidden;*/
         height: 100vh;
         width: 100vw;
     }

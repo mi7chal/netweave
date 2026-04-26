@@ -13,11 +13,13 @@ import type { ReactNode } from "react";
 interface ConfirmDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
     title: string;
     description: ReactNode;
     confirmLabel?: string;
     variant?: "destructive" | "default";
+    isSubmitting?: boolean;
+    submittingLabel?: string;
 }
 
 export function ConfirmDialog({
@@ -28,21 +30,35 @@ export function ConfirmDialog({
     description,
     confirmLabel = "Confirm",
     variant = "destructive",
+    isSubmitting = false,
+    submittingLabel = "Working...",
 }: ConfirmDialogProps) {
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
+        <AlertDialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (isSubmitting && !nextOpen) return;
+                onOpenChange(nextOpen);
+            }}
+        >
             <AlertDialogContent className="bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
                 <AlertDialogHeader>
                     <AlertDialogTitle>{title}</AlertDialogTitle>
                     <AlertDialogDescription>{description}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
-                        onClick={onConfirm}
+                        disabled={isSubmitting}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            void Promise.resolve(onConfirm()).catch(() => {
+                                // Callers handle user-facing errors (toasts/messages).
+                            });
+                        }}
                     >
-                        {confirmLabel}
+                        {isSubmitting ? submittingLabel : confirmLabel}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

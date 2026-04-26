@@ -2,7 +2,8 @@ import { useCRUDList, type UseCRUDListResult } from './useCRUDList';
 import type { User } from '../types/api';
 
 export interface UseUsersOptions {
-    onError?: (error: Error) => void;
+    onLoadError?: (error: Error) => void;
+    onMutationError?: (error: Error) => void;
     revalidateOnFocus?: boolean;
 }
 

@@ -6,19 +6,13 @@ import { ErrorProvider } from "./contexts/ErrorContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 
-const Main = () => {
-  return (
-    <StrictMode>
-      <ErrorProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-        <Toaster />
-      </ErrorProvider>
-    </StrictMode>
-  );
-};
-
-createRoot(document.getElementById("root")!).render(<Main />);
-
-export default Main;
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <ErrorProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+      <Toaster />
+    </ErrorProvider>
+  </StrictMode>,
+);

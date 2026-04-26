@@ -1,5 +1,3 @@
-// todo check if we can replace some types/consts with enums
-// also check if we can use undefined instead of null for optional fields
 export interface Service {
   id: string;
   device_id: string | null;
@@ -43,7 +41,6 @@ export const DeviceType = {
   Router: "ROUTER",
   Other: "OTHER",
 } as const;
-
 export type DeviceType = (typeof DeviceType)[keyof typeof DeviceType];
 
 export const IpStatus = {
@@ -53,7 +50,6 @@ export const IpStatus = {
   Deprecated: "DEPRECATED",
   Free: "FREE",
 } as const;
-
 export type IpStatus = (typeof IpStatus)[keyof typeof IpStatus];
 
 export interface Interface {
@@ -134,11 +130,17 @@ export interface Integration {
   last_sync_at: string | null;
 }
 
+export const UserRole = {
+  Admin: "ADMIN",
+  Viewer: "VIEWER",
+} as const;
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
 export interface User {
   id: string;
   username: string;
   email: string;
-  role: string;
+  role: UserRole;
   is_active: boolean;
   created_at: string;
 }
@@ -146,7 +148,7 @@ export interface User {
 export interface CreateUserPayload {
   username: string;
   email: string;
-  role: string;
+  role: UserRole;
   password?: string;
   is_active: boolean;
 }

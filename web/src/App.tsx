@@ -45,9 +45,10 @@ function App() {
   const [homepagePublic, setHomepagePublic] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     setOnBackendDown(() => setBackendDown(true));
-  });
+    return () => setOnBackendDown(null);
+  }, [setBackendDown]);
 
   useEffect(() => {
     fetchApi<Record<string, string>>("/api/settings/public", { silent: true })

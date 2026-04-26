@@ -5,7 +5,8 @@ import type { Service } from '@/types/api';
 
 export interface UseServicesOptions {
   refreshInterval?: number;
-  onError?: (error: Error) => void;
+  onLoadError?: (error: Error) => void;
+  onMutationError?: (error: Error) => void;
 }
 
 export interface UseServicesResult {
@@ -17,12 +18,18 @@ export interface UseServicesResult {
 }
 
 export function useServices(options: UseServicesOptions = {}): UseServicesResult {
-  const { refreshInterval = 10000, onError } = options;
+  const { refreshInterval = 10000, onLoadError, onMutationError } = options;
 
   const { data, error, isLoading, mutate: swrMutate } = useSWR<{ services: Service[] }>(
     '/api/dashboard',
     fetchApi,
-    { refreshInterval }
+    {
+      refreshInterval,
+      onError: (err) => {
+        const normalized = err instanceof Error ? err : new Error(String(err));
+        if (onLoadError) onLoadError(normalized);
+      },
+    }
   );
 
   const mutate = useCallback(async () => {
@@ -32,19 +39,19 @@ export function useServices(options: UseServicesOptions = {}): UseServicesResult
   const remove = useCallback(
     async (id: string) => {
       try {
-        await fetchApi(`/api/services/${id}`, { method: 'DELETE' });
+        await fetchApi(`/api/services/${id}`, { method: 'DELETE', silent: true });
         await swrMutate();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        if (onError) onError(error);
+        if (onMutationError) onMutationError(error);
         throw error;
       }
     },
-    [onError, swrMutate]
+    [onMutationError, swrMutate]
   );
 
   return {
-    services: data?.services || [],
+    services: data?.services ?? [],
     isLoading,
     error,
     mutate,
