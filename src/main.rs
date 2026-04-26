@@ -1,6 +1,7 @@
 use netweave::config::Config;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
+use std::time::Duration;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -56,6 +57,7 @@ async fn main() {
 
     tokio::spawn(netweave::monitoring::start_monitoring(state.clone()));
     tokio::spawn(netweave::integrations::run_sync_task(state.clone()));
+    tokio::spawn(oidc_retry_loop(state.clone()));
 
     let app = netweave::create_app(state).await.unwrap_or_else(|e| {
         eprintln!("ERROR: {}", e);
@@ -84,6 +86,50 @@ async fn main() {
     }
 
     tracing::info!("Server shut down gracefully.");
+}
+
+async fn oidc_retry_loop(state: netweave::AppState) {
+    if state.config.oidc_config.is_none() {
+        return;
+    }
+
+    // Initial delay before first retry attempt (give the network a moment to settle).
+    let base_delay = Duration::from_secs(30);
+    let max_delay = Duration::from_secs(300);
+    let mut attempts: u32 = 0;
+
+    loop {
+        if state.oidc.read().await.is_none() {
+            if let Some(oidc_config) = state.config.oidc_config.as_ref() {
+                match netweave::auth::oidc::OidcService::from_config(oidc_config).await {
+                    Ok(service) => {
+                        *state.oidc.write().await = Some(service);
+                        tracing::info!("OIDC service initialized by retry loop.");
+                        attempts = 0;
+                        // OIDC is up — no need to keep looping aggressively.
+                        // Sleep a long interval before checking again in case it drops.
+                        tokio::time::sleep(max_delay).await;
+                        continue;
+                    }
+                    Err(e) => {
+                        attempts = attempts.saturating_add(1);
+                        // Exponential back-off: 30s, 60s, 120s, 240s, capped at 300s.
+                        let delay = (base_delay * 2u32.saturating_pow(attempts - 1)).min(max_delay);
+                        tracing::warn!(
+                            "OIDC retry failed (attempt {}), retrying in {:?}: {}",
+                            attempts,
+                            delay,
+                            e
+                        );
+                        tokio::time::sleep(delay).await;
+                    }
+                }
+            }
+        } else {
+            // Already initialized — check again after max_delay in case it gets reset.
+            tokio::time::sleep(max_delay).await;
+        }
+    }
 }
 
 async fn shutdown_signal() {

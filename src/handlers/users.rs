@@ -9,21 +9,44 @@ use axum::{
     Json,
 };
 use bcrypt::{hash, DEFAULT_COST};
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, PaginatorTrait,
+    QueryFilter, Set, SqlErr,
+};
 use std::str::FromStr;
 use uuid::Uuid;
 
 async fn active_admin_count(state: &AppState) -> Result<u64, AppError> {
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE role = $1 AND is_active = TRUE")
-            .bind(Role::Admin.as_str())
-            .fetch_one(&state.db.pool)
-            .await?;
-    Ok(count as u64)
+    let count = users::Entity::find()
+        .filter(users::Column::Role.eq(Role::Admin.as_str()))
+        .filter(users::Column::IsActive.eq(true))
+        .count(&state.db.conn)
+        .await?;
+    Ok(count)
 }
 
 fn role_or_bad_request(role: &str) -> AppResult<Role> {
     Role::from_str(role).map_err(AppError::BadRequest)
+}
+
+fn map_user_write_error(err: DbErr) -> AppError {
+    if let Some(SqlErr::UniqueConstraintViolation(detail)) = err.sql_err() {
+        if detail.contains("users_username_key") || detail.contains("users.username") {
+            return AppError::Conflict("Username already exists".into());
+        }
+        if detail.contains("users_email_key") || detail.contains("users.email") {
+            return AppError::Conflict("Email already exists".into());
+        }
+    }
+
+    let msg = err.to_string();
+    if msg.contains("users_username_key") || msg.contains("users.username") {
+        return AppError::Conflict("Username already exists".into());
+    }
+    if msg.contains("users_email_key") || msg.contains("users.email") {
+        return AppError::Conflict("Email already exists".into());
+    }
+    AppError::from(err)
 }
 
 pub async fn list_users(State(state): State<AppState>) -> AppResult<Json<Vec<User>>> {
@@ -50,15 +73,8 @@ pub async fn create_user(
     Json(payload): Json<CreateUserPayload>,
 ) -> AppResult<Json<Uuid>> {
     let role = role_or_bad_request(&payload.role)?;
-
-    let existing_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE username = $1")
-        .bind(&payload.username)
-        .fetch_one(&state.db.pool)
-        .await?;
-
-    if existing_count > 0 {
-        return Err(AppError::Conflict("Username already exists".into()));
-    }
+    let username = payload.username;
+    let email = payload.email;
 
     let password_hash = if let Some(pwd) = payload.password {
         Some(hash(pwd, DEFAULT_COST).map_err(|e| AppError::Internal(e.into()))?)
@@ -69,15 +85,18 @@ pub async fn create_user(
     let new_id = Uuid::now_v7();
     let user_model = users::ActiveModel {
         id: Set(new_id),
-        username: Set(payload.username),
-        email: Set(payload.email),
+        username: Set(username),
+        email: Set(email),
         role: Set(role.as_str().to_string()),
         password_hash: Set(password_hash),
         is_active: Set(payload.is_active),
         ..Default::default()
     };
 
-    user_model.insert(&state.db.conn).await?;
+    user_model
+        .insert(&state.db.conn)
+        .await
+        .map_err(map_user_write_error)?;
     Ok(Json(new_id))
 }
 
@@ -132,7 +151,9 @@ pub async fn update_user(
         }
     }
 
-    user.update(&state.db.conn).await?;
+    user.update(&state.db.conn)
+        .await
+        .map_err(map_user_write_error)?;
     Ok(Json(true))
 }
 

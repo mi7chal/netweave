@@ -3,7 +3,6 @@
 
 use axum::body::Body;
 use axum::http::Request;
-use netweave;
 use netweave::config::Config;
 use sqlx::postgres::PgPoolOptions;
 use tower::{Service, ServiceExt};

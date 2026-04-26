@@ -1,5 +1,6 @@
 use super::Db;
 use crate::entities::users;
+use anyhow::anyhow;
 use sea_orm::*;
 use uuid::Uuid;
 
@@ -28,6 +29,15 @@ impl Db {
             return Ok(user.id);
         }
 
+        let email_exists = users::Entity::find()
+            .filter(users::Column::Email.eq(email))
+            .one(&self.conn)
+            .await?
+            .is_some();
+        if email_exists {
+            return Err(anyhow!("Email already exists"));
+        }
+
         let new_id = Uuid::now_v7();
         let user = users::ActiveModel {
             id: Set(new_id),
@@ -38,7 +48,25 @@ impl Db {
             ..Default::default()
         };
 
-        user.insert(&self.conn).await?;
+        if let Err(err) = user.insert(&self.conn).await {
+            if let Some(SqlErr::UniqueConstraintViolation(detail)) = err.sql_err() {
+                if detail.contains("users_username_key") || detail.contains("users.username") {
+                    return Err(anyhow!("Username already exists"));
+                }
+                if detail.contains("users_email_key") || detail.contains("users.email") {
+                    return Err(anyhow!("Email already exists"));
+                }
+            }
+
+            let msg = err.to_string();
+            if msg.contains("users_username_key") || msg.contains("users.username") {
+                return Err(anyhow!("Username already exists"));
+            }
+            if msg.contains("users_email_key") || msg.contains("users.email") {
+                return Err(anyhow!("Email already exists"));
+            }
+            return Err(err.into());
+        }
         Ok(new_id)
     }
 

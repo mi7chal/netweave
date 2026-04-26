@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { fetchApi } from "@/lib/api-client";
 import { toast } from "sonner";
-import type { User, CreateUserPayload } from "@/types/api";
+import { UserRole, type User, type CreateUserPayload } from "@/types/api";
 
 interface UserDialogProps {
     open: boolean;
@@ -23,7 +23,7 @@ export function UserDialog({ open, onOpenChange, onSaved, initialData }: UserDia
     useEffect(() => {
         if (open) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFormData(initialData ?? { role: "VIEWER", is_active: true });
+            setFormData(initialData ?? { role: UserRole.Viewer, is_active: true });
         }
     }, [open, initialData]);
 
@@ -32,6 +32,7 @@ export function UserDialog({ open, onOpenChange, onSaved, initialData }: UserDia
             const url = isEdit ? `/api/users/${initialData!.id}` : "/api/users";
             await fetchApi(url, {
                 method: isEdit ? "PUT" : "POST",
+                silent: true,
                 body: JSON.stringify(formData),
             });
             onSaved();
@@ -66,11 +67,11 @@ export function UserDialog({ open, onOpenChange, onSaved, initialData }: UserDia
                     </div>
                     <div className="grid gap-2">
                         <Label className="text-sm font-medium">Role</Label>
-                        <Select value={formData.role || "VIEWER"} onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                        <Select value={formData.role || UserRole.Viewer} onValueChange={(val) => setFormData({ ...formData, role: val as CreateUserPayload["role"] })}>
                             <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg"><SelectValue placeholder="Select role" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="VIEWER">Viewer</SelectItem>
-                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value={UserRole.Viewer}>Viewer</SelectItem>
+                                <SelectItem value={UserRole.Admin}>Admin</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

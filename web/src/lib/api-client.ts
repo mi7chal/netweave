@@ -1,9 +1,11 @@
 import { toast } from "sonner";
 
+// todo refactor this file
+
 // Simple event bus/callback for non-component files to trigger UI updates
 let onBackendDown: (() => void) | null = null;
 
-export const setOnBackendDown = (cb: () => void) => {
+export const setOnBackendDown = (cb: (() => void) | null) => {
   onBackendDown = cb;
 };
 
@@ -67,8 +69,9 @@ export async function fetchApi<T>(
     if (error instanceof TypeError) {
       console.error("Network request failed - Backend might be down", error);
       if (onBackendDown) onBackendDown();
-      // Also toast just in case
-      toast.error("Could not connect to backend server.");
+      if (!silent) {
+        toast.error("Could not connect to backend server.");
+      }
     }
     throw error;
   }

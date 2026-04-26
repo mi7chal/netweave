@@ -4,9 +4,10 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
-// ---------- Deserializers for common patterns ----------
+// SECTION: Common deserializers
 
-/// Deserialize checkbox-like values ("on", "true", "1") to boolean
+/// Deserialize checkbox-like values ("on", "true", "1") to boolean.
+/// Project uses libraries so it's easier to just use this function
 pub fn deserialize_checkbox<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
     D: Deserializer<'de>,
@@ -34,7 +35,7 @@ where
     }
 }
 
-// ---------- Domain validators ----------
+// SECTION: Domain validators
 
 /// Validate hostname format (RFC 1123 simplified)
 pub fn validate_hostname(hostname: &str) -> Result<()> {

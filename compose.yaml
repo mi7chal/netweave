@@ -12,6 +12,7 @@ services:
     container_name: netweave
     environment:
       DATABASE_URL: "postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}"
+      SERVER_PORT: ${SERVER_PORT:-8789}
       DEFAULT_ADMIN_USER: ${DEFAULT_ADMIN_USER:-admin}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-adminpassword}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
@@ -19,7 +20,7 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
     ports:
-      - "${APP_PORT:-8789}:8789"
+      - "${APP_PORT:-8789}:${SERVER_PORT:-8789}"
     depends_on:
       db:
         condition: service_healthy
