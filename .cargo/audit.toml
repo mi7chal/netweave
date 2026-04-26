@@ -1,0 +1,5 @@
+[advisories]
+ignore = [
+    # see https://rustsec.org/advisories/RUSTSEC-2023-0071.html
+    "RUSTSEC-2023-0071",
+]

@@ -10,9 +10,9 @@ repo = "local"
 
 [[repos.hooks]]
 id = "cargo-fmt"
-name = "cargo fmt"
+name = "cargo fmt (check)"
 language = "system"
-entry = "cargo fmt --all"
+entry = "cargo fmt --all --check"
 pass_filenames = false
 stages = ["pre-commit"]
 
@@ -26,8 +26,48 @@ stages = ["pre-commit"]
 
 [[repos.hooks]]
 id = "cargo-clippy"
-name = "cargo clippy (deny warnings)"
+name = "cargo clippy (fast set)"
+language = "system"
+entry = "cargo clippy --workspace --lib --bins -- -D warnings"
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "cargo-clippy-all-targets"
+name = "cargo clippy (all targets, deny warnings)"
 language = "system"
 entry = "cargo clippy --all-targets -- -D warnings"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "cargo-test"
+name = "cargo test"
+language = "system"
+entry = "cargo test"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "cargo-audit"
+name = "cargo audit"
+language = "system"
+entry = "cargo audit"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "web-pnpm-test"
+name = "web pnpm test"
+language = "system"
+entry = "cd web && pnpm test --run"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "web-pnpm-build"
+name = "web pnpm build"
+language = "system"
+entry = "cd web && pnpm build"
 pass_filenames = false
 stages = ["pre-push"]

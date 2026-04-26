@@ -34,3 +34,6 @@ logs/
 node_modules/
 dist/
 build/
+
+logs/
+logs*/

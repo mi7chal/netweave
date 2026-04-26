@@ -34,11 +34,3 @@ impl ServiceService {
         db.list_dashboard_services().await
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_service_validation() {
-        // Future: add tests with test database
-    }
-}

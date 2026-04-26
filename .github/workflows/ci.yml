@@ -4,13 +4,64 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  backend:
-    name: Backend (Rust)
+  changes:
+    name: Detect changed areas
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      version: ${{ steps.filter.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'tests/**'
+              - 'migrations/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/**'
+            frontend:
+              - 'web/**'
+            version:
+              - 'Cargo.toml'
+              - 'web/package.json'
+              - 'compose.yaml'
+
+  backend:
+    name: Backend (Rust + Integration + Audit)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: netweave_test
+          POSTGRES_USER: netweave
+          POSTGRES_PASSWORD: netweave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U netweave -d netweave_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://netweave:netweave@localhost:5432/netweave_test
+      DEFAULT_ADMIN_USER: integration-admin
+      DEFAULT_ADMIN_PASSWORD: integration-admin-password
     steps:
       - uses: actions/checkout@v4
 
@@ -31,8 +82,19 @@ jobs:
       - name: Test
         run: cargo test
 
+      - name: Run ignored integration tests
+        run: cargo test --test api -- --ignored
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Run dependency audit
+        run: cargo audit
+
   version-check:
     name: Version Consistency
+    needs: changes
+    if: needs.changes.outputs.version == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +131,8 @@ jobs:
 
   frontend:
     name: Frontend (React)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +153,10 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+        working-directory: web
+
+      - name: Test
+        run: pnpm test --run
         working-directory: web
 
       - name: Build

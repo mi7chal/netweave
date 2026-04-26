@@ -44,3 +44,38 @@ impl LoginRateLimiter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::LoginRateLimiter;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn allows_requests_below_limit_and_blocks_after() {
+        let limiter = LoginRateLimiter::new(2, Duration::from_secs(60));
+
+        assert!(limiter.check("alice").await);
+        assert!(limiter.check("alice").await);
+        assert!(!limiter.check("alice").await);
+    }
+
+    #[tokio::test]
+    async fn tracks_limits_per_user() {
+        let limiter = LoginRateLimiter::new(1, Duration::from_secs(60));
+
+        assert!(limiter.check("alice").await);
+        assert!(!limiter.check("alice").await);
+        assert!(limiter.check("bob").await);
+    }
+
+    #[tokio::test]
+    async fn allows_again_after_window_expires() {
+        let limiter = LoginRateLimiter::new(1, Duration::from_millis(20));
+
+        assert!(limiter.check("alice").await);
+        assert!(!limiter.check("alice").await);
+
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert!(limiter.check("alice").await);
+    }
+}
