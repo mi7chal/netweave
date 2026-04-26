@@ -68,12 +68,15 @@ cargo install prek
 prek install
 ```
 
-Current hook checks include:
+Pre-commit checks (fast):
 - `cargo fmt --all --check`
+- `cd web && pnpm lint`
+- `cargo clippy --workspace --lib --bins -- -D warnings`
+
+Pre-push checks (strict):
 - `cargo clippy --all-targets -- -D warnings`
 - `cargo test`
 - `cargo audit`
-- `cd web && pnpm lint`
 - `cd web && pnpm test --run`
 - `cd web && pnpm build`
 
