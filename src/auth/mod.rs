@@ -1,6 +1,7 @@
 //! # Authentication module
 //!
-//! Manages authentication, this app uses standard JWT and alterntively OIDC
+//! Manages authentication using server-side sessions (tower-sessions) and,
+//! optionally, OIDC for login.
 
 use crate::db::Db;
 use crate::handlers::common::{AppError, AppResult};
@@ -68,7 +69,13 @@ pub async fn ensure_default_users(db: &Db) {
         std::env::var("DEFAULT_ADMIN_USER"),
         std::env::var("DEFAULT_ADMIN_PASSWORD"),
     ) {
-        let hashed = hash(password, DEFAULT_COST).expect("Failed to hash password");
+        let hashed = match hash(password, DEFAULT_COST) {
+            Ok(hashed) => hashed,
+            Err(e) => {
+                tracing::error!("Failed to hash default admin password: {}", e);
+                return;
+            }
+        };
         match db
             .create_user(&username, "admin@homelab.local", Some(&hashed), "ADMIN")
             .await

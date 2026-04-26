@@ -30,7 +30,7 @@ pub enum ServiceStatus {
     Unknown,
 }
 
-/// Geeneral app state object. It should contain all app data used during runtime (mutable and not).
+/// General app state object. It should contain all app data used during runtime (mutable and not).
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,

@@ -14,7 +14,9 @@ use tower_http::services::{ServeDir, ServeFile};
 use tower_sessions::{Expiry, Session, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
 
-/// Authentication middleware. Authentication is based on asymmetricaly encrypted JWT, check [`auth`] for more info.
+/// Authentication middleware backed by server-side sessions (tower-sessions).
+/// The authenticated [`AuthUser`] is loaded from session storage and attached
+/// to request extensions for downstream handlers.
 async fn auth_middleware(
     _: State<AppState>,
     session: Session,

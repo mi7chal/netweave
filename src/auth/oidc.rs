@@ -14,23 +14,14 @@ pub struct OidcService {
 
 impl OidcService {
     pub async fn from_config(config: &OidcConfig) -> Result<Self> {
-        let mut issuer_str = config.discovery_url.clone();
-        if issuer_str.ends_with(".well-known/openid-configuration") {
-            issuer_str = issuer_str
-                .strip_suffix(".well-known/openid-configuration")
-                .unwrap()
-                .to_string();
-        }
-        if issuer_str.ends_with(".well-known/openid-configuration/") {
-            issuer_str = issuer_str
-                .strip_suffix(".well-known/openid-configuration/")
-                .unwrap()
-                .to_string();
-        }
+        // config.rs normalizes discovery_url to end with /.well-known/openid-configuration.
+        // The openidconnect crate needs the issuer base URL (without the well-known path).
+        let issuer_str = config
+            .discovery_url
+            .trim_end_matches(".well-known/openid-configuration")
+            .trim_end_matches('/');
         // openidconnect-rs often requires a trailing slash for authentik issuers.
-        if !issuer_str.ends_with('/') {
-            issuer_str.push('/');
-        }
+        let issuer_str = format!("{issuer_str}/");
 
         let issuer_url = IssuerUrl::new(issuer_str)?;
         let client_id = ClientId::new(config.client_id.clone());

@@ -173,6 +173,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         clear_oidc_env();
         env::set_var("DATABASE_URL", "postgres://localhost");
+        env::set_var("SERVER_PORT", "8789");
         env::set_var("OIDC_CLIENT_ID", "netweave");
         env::set_var("OIDC_SECRET", "secret-from-alias");
         env::set_var("OIDC_DISCOVERY_URL", "https://auth.example.com");
@@ -195,6 +196,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         clear_oidc_env();
         env::set_var("DATABASE_URL", "postgres://localhost");
+        env::set_var("SERVER_PORT", "8789");
         env::set_var("OIDC_CLIENT_ID", "netweave");
         env::set_var("OIDC_CLIENT_SECRET", "super-secret");
         env::set_var("OIDC_ISSUER", "https://issuer.example.com/");
