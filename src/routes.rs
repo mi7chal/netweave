@@ -62,7 +62,7 @@ async fn optional_auth_middleware(
     }
 
     // Otherwise, run standard authentication middleware
-    return auth_middleware(state, session, request, next).await;
+    auth_middleware(state, session, request, next).await
 }
 
 /// Admin access check
