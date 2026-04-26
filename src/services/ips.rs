@@ -46,11 +46,3 @@ pub async fn sync_after_update_ip(
     // Future: Sync IP changes with external services
     // This is a placeholder for async integration hooks
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_ip_validation() {
-        // Future: add tests with test database
-    }
-}

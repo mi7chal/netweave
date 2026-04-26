@@ -57,11 +57,3 @@ impl NetworkService {
         db.list_networks().await
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_network_validation() {
-        // Future: add tests with test database
-    }
-}

@@ -35,11 +35,3 @@ impl DeviceService {
         db.get_device_details(id).await
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_create_device_validates_hostname() {
-        // Future: add tests with test database
-    }
-}

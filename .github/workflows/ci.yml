@@ -31,6 +31,54 @@ jobs:
       - name: Test
         run: cargo test
 
+  backend-integration:
+    name: Backend Integration (Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: netweave_test
+          POSTGRES_USER: netweave
+          POSTGRES_PASSWORD: netweave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U netweave -d netweave_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://netweave:netweave@localhost:5432/netweave_test
+      DEFAULT_ADMIN_USER: integration-admin
+      DEFAULT_ADMIN_PASSWORD: integration-admin-password
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run ignored integration tests
+        run: cargo test --test api -- --ignored
+
+  backend-audit:
+    name: Backend Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run dependency audit
+        run: cargo audit
+
   version-check:
     name: Version Consistency
     runs-on: ubuntu-latest
@@ -89,6 +137,10 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+        working-directory: web
+
+      - name: Test
+        run: pnpm test --run
         working-directory: web
 
       - name: Build

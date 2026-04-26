@@ -115,3 +115,47 @@ fn dev_key() -> Vec<u8> {
         0x1E, 0x1F,
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{decrypt, encrypt};
+    use std::env;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn set_test_env() {
+        env::remove_var("NETWEAVE_ENV");
+        env::set_var("ENCRYPTION_KEY", "dev");
+    }
+
+    #[test]
+    fn encrypt_decrypt_roundtrip_works() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        set_test_env();
+
+        let plaintext = "super-secret-password";
+        let encrypted = encrypt(plaintext).expect("encryption should succeed");
+        let decrypted = decrypt(&encrypted).expect("decryption should succeed");
+
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn decrypt_rejects_invalid_base64() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        set_test_env();
+
+        let err = decrypt("%%% definitely-not-base64 %%%").expect_err("expected decode failure");
+        assert!(err.to_string().contains("Base64 decode failed"));
+    }
+
+    #[test]
+    fn decrypt_rejects_too_short_ciphertext() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        set_test_env();
+
+        let err = decrypt("AQID").expect_err("expected length validation failure");
+        assert!(err.to_string().contains("Invalid ciphertext length"));
+    }
+}
