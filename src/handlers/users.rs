@@ -151,7 +151,9 @@ pub async fn update_user(
         }
     }
 
-    user.update(&state.db.conn).await.map_err(map_user_write_error)?;
+    user.update(&state.db.conn)
+        .await
+        .map_err(map_user_write_error)?;
     Ok(Json(true))
 }
 

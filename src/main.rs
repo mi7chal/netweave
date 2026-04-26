@@ -114,11 +114,12 @@ async fn oidc_retry_loop(state: netweave::AppState) {
                     Err(e) => {
                         attempts = attempts.saturating_add(1);
                         // Exponential back-off: 30s, 60s, 120s, 240s, capped at 300s.
-                        let delay =
-                            (base_delay * 2u32.saturating_pow(attempts - 1)).min(max_delay);
+                        let delay = (base_delay * 2u32.saturating_pow(attempts - 1)).min(max_delay);
                         tracing::warn!(
                             "OIDC retry failed (attempt {}), retrying in {:?}: {}",
-                            attempts, delay, e
+                            attempts,
+                            delay,
+                            e
                         );
                         tokio::time::sleep(delay).await;
                     }
