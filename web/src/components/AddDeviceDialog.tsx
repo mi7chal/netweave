@@ -16,16 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormWrapper } from "@/components/FormWrapper";
 import { DeviceType, type CreateDevicePayload, type DeviceListView } from "@/types/api";
 import { useState } from "react";
 import { fetchApi } from "@/lib/api-client";
 import { toast } from "sonner";
-
-const INPUT_CLASS =
-  "bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg";
-const SELECT_TRIGGER_CLASS =
-  "bg-secondary/40 border-border/40 focus:ring-primary/40 rounded-lg transition-all";
 
 const defaultFormData = (): Partial<CreateDevicePayload> => ({
   device_type: DeviceType.Other,
@@ -72,20 +66,26 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
         if (!open) setFormData(defaultFormData());
       }}
     >
-      <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+          <DialogTitle>
             Add New Device
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground/80">
+          <DialogDescription>
             Create a new device. You can add detailed interfaces later.
           </DialogDescription>
         </DialogHeader>
-        <FormWrapper onSubmit={handleCreate} isSubmitting={isSubmitting}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleCreate();
+          }}
+        >
+          <fieldset disabled={isSubmitting}>
           <div className="grid gap-4 py-6">
             <div className="grid gap-2">
-              <Label htmlFor="hostname" className="text-sm font-medium">
-                Hostname <span className="ml-1 text-destructive">*</span>
+              <Label htmlFor="hostname">
+                Hostname <span className="ml-1">*</span>
               </Label>
               <Input
                 id="hostname"
@@ -94,13 +94,12 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                 onChange={(e) =>
                   setFormData({ ...formData, hostname: e.target.value })
                 }
-                className={INPUT_CLASS}
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="parent" className="text-sm font-medium">
+              <Label htmlFor="parent">
                 Parent Device
               </Label>
               <Select
@@ -112,22 +111,15 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                   })
                 }
               >
-                <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectTrigger>
                   <SelectValue placeholder="Select parent (optional)" />
                 </SelectTrigger>
-                <SelectContent className="bg-card/90 backdrop-blur-xl border-border/40 shadow-xl max-h-[200px]">
-                  <SelectItem
-                    value="none"
-                    className="text-muted-foreground italic"
-                  >
+                <SelectContent className="max-h-[200px]">
+                  <SelectItem value="none">
                     None
                   </SelectItem>
                   {(devices || []).map((d) => (
-                    <SelectItem
-                      key={d.id}
-                      value={d.id}
-                      className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer rounded-md mx-1 my-0.5"
-                    >
+                    <SelectItem key={d.id} value={d.id}>
                       {d.hostname}
                     </SelectItem>
                   ))}
@@ -136,7 +128,7 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="type" className="text-sm font-medium">
+              <Label htmlFor="type">
                 Type
               </Label>
               <Select
@@ -148,16 +140,12 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                   })
                 }
               >
-                <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent className="bg-card/90 backdrop-blur-xl border-border/40 shadow-xl">
+                <SelectContent>
                   {Object.values(DeviceType).map((t) => (
-                    <SelectItem
-                      key={t}
-                      value={t}
-                      className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer rounded-md mx-1 my-0.5"
-                    >
+                    <SelectItem key={t} value={t}>
                       {t}
                     </SelectItem>
                   ))}
@@ -166,7 +154,7 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="mac" className="text-sm font-medium">
+              <Label htmlFor="mac">
                 Initial MAC Address (eth0)
               </Label>
               <Input
@@ -176,12 +164,11 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                 onChange={(e) =>
                   setFormData({ ...formData, mac_address: e.target.value })
                 }
-                className={INPUT_CLASS}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="os" className="text-sm font-medium">
+              <Label htmlFor="os">
                 OS Info
               </Label>
               <Input
@@ -191,12 +178,11 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                 onChange={(e) =>
                   setFormData({ ...formData, os_info: e.target.value })
                 }
-                className={INPUT_CLASS}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="ip" className="text-sm font-medium">
+              <Label htmlFor="ip">
                 Static IP Address (optional)
               </Label>
               <Input
@@ -206,16 +192,14 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
                 onChange={(e) =>
                   setFormData({ ...formData, ip_address: e.target.value })
                 }
-                className={INPUT_CLASS}
               />
             </div>
           </div>
-          <DialogFooter className="border-t border-border/20 pt-4 mt-2">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="hover:bg-secondary/60"
             >
               Cancel
             </Button>
@@ -223,7 +207,8 @@ export function AddDeviceDialog({ open, onOpenChange, onSaved, devices }: AddDev
               {isSubmitting ? "Creating..." : "Create Device"}
             </Button>
           </DialogFooter>
-        </FormWrapper>
+          </fieldset>
+        </form>
       </DialogContent>
     </Dialog>
   );

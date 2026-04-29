@@ -69,18 +69,18 @@ export function ServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+          <DialogTitle>
             {isEdit ? "Edit Service" : "New Service"}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground/80">
+          <DialogDescription>
             Configure service details and monitoring.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-6">
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-sm font-medium">
+            <Label htmlFor="name">
               Name
             </Label>
             <Input
@@ -90,11 +90,10 @@ export function ServiceDialog({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="url" className="text-sm font-medium">
+            <Label htmlFor="url">
               URL
             </Label>
             <Input
@@ -104,11 +103,10 @@ export function ServiceDialog({
               onChange={(e) =>
                 setFormData({ ...formData, base_url: e.target.value })
               }
-              className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="health_endpoint" className="text-sm font-medium">
+            <Label htmlFor="health_endpoint">
               Health Endpoint (Optional)
             </Label>
             <Input
@@ -118,15 +116,14 @@ export function ServiceDialog({
               onChange={(e) =>
                 setFormData({ ...formData, health_endpoint: e.target.value })
               }
-              className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
             />
-            <p className="text-xs text-muted-foreground">
+            <p>
               Path to check for service health (e.g. /health). If empty, base
               URL is used.
             </p>
           </div>
           <div className="grid gap-2">
-            <Label className="text-sm font-medium">Link to Device</Label>
+            <Label>Link to Device</Label>
             <Select
               value={formData.device_id || "none"}
               onValueChange={(val) =>
@@ -136,7 +133,7 @@ export function ServiceDialog({
                 })
               }
             >
-              <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg">
+              <SelectTrigger>
                 <SelectValue placeholder="Select a device (Optional)" />
               </SelectTrigger>
               <SelectContent>
@@ -149,10 +146,10 @@ export function ServiceDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4 transition-all hover:bg-secondary/40">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium">Publicly Visible</Label>
-              <p className="text-sm text-muted-foreground/80">
+          <div className="flex items-center justify-between border p-4">
+            <div className="flex flex-col gap-0.5">
+              <Label>Publicly Visible</Label>
+              <p>
                 Show this service on the public dashboard.
               </p>
             </div>
@@ -164,7 +161,7 @@ export function ServiceDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="icon_url" className="text-sm font-medium">
+            <Label htmlFor="icon_url">
               Icon URL (Optional)
             </Label>
             <Input
@@ -174,18 +171,16 @@ export function ServiceDialog({
               onChange={(e) =>
                 setFormData({ ...formData, icon_url: e.target.value })
               }
-              className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg"
             />
-            <p className="text-xs text-muted-foreground">
+            <p>
               Overrides the auto-discovered icon if provided.
             </p>
           </div>
         </div>
-        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="hover:bg-secondary/60"
           >
             Cancel
           </Button>

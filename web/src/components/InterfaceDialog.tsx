@@ -41,12 +41,12 @@ export function InterfaceDialog({ open, onOpenChange, onSubmit, initialName = ""
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                    <DialogTitle>
                         {mode === "add" ? "Add Interface" : "Edit Interface"}
                     </DialogTitle>
-                    <DialogDescription className="text-muted-foreground/80">
+                    <DialogDescription>
                         {mode === "add" ? "Add a new network interface to this device." : "Update network interface details."}
                     </DialogDescription>
                 </DialogHeader>
@@ -64,8 +64,8 @@ export function InterfaceDialog({ open, onOpenChange, onSubmit, initialName = ""
                             label="MAC Address"
                             placeholder="00:00:00:00:00:00"
                         />
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit">
                                 {mode === "add" ? "Add Interface" : "Save Changes"}
                             </Button>

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import useSWR from 'swr';
-import { fetchApi } from '@/lib/api-client';
 import type { Service } from '@/types/api';
+import { deleteService, getDashboardServices } from '@/lib/api/services';
 
 export interface UseServicesOptions {
   refreshInterval?: number;
@@ -21,8 +21,8 @@ export function useServices(options: UseServicesOptions = {}): UseServicesResult
   const { refreshInterval = 10000, onLoadError, onMutationError } = options;
 
   const { data, error, isLoading, mutate: swrMutate } = useSWR<{ services: Service[] }>(
-    '/api/dashboard',
-    fetchApi,
+    ['dashboard-services'],
+    getDashboardServices,
     {
       refreshInterval,
       onError: (err) => {
@@ -39,7 +39,7 @@ export function useServices(options: UseServicesOptions = {}): UseServicesResult
   const remove = useCallback(
     async (id: string) => {
       try {
-        await fetchApi(`/api/services/${id}`, { method: 'DELETE', silent: true });
+        await deleteService(id);
         await swrMutate();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));

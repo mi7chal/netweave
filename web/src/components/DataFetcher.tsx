@@ -1,4 +1,6 @@
 import React from 'react';
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export interface DataFetcherProps<T> {
   isLoading: boolean;
@@ -30,9 +32,7 @@ export function DataFetcher<T>({
   if (isLoading) {
     return (
       loadingComponent || (
-        <div className="flex items-center justify-center p-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <div className="py-10 text-center">Loading...</div>
       )
     );
   }
@@ -40,18 +40,15 @@ export function DataFetcher<T>({
   if (error) {
     return (
       errorComponent?.(error, onRetry) || (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-sm font-medium text-destructive">Error loading data</p>
-          <p className="text-xs text-destructive/80">{error.message}</p>
+        <Alert>
+          <AlertTitle>Error loading data</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
           {onRetry && (
-            <button
-              onClick={onRetry}
-              className="mt-2 text-xs text-destructive hover:underline"
-            >
+            <Button onClick={onRetry} size="sm" variant="secondary" className="mt-3">
               Retry
-            </button>
+            </Button>
           )}
-        </div>
+        </Alert>
       )
     );
   }
@@ -59,9 +56,7 @@ export function DataFetcher<T>({
   if (!data || data.length === 0) {
     return (
       emptyComponent?.(emptyMessage) || (
-        <div className="flex items-center justify-center p-8 text-center">
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        </div>
+        <div className="py-10 text-center">{emptyMessage}</div>
       )
     );
   }

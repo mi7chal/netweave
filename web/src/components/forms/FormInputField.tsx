@@ -9,7 +9,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 
 interface FormInputFieldProps<TFieldValues extends FieldValues> {
@@ -40,21 +39,20 @@ export function FormInputField<TFieldValues extends FieldValues>({
             control={control}
             name={name}
             render={({ field, fieldState }) => (
-                <FormItem className={cn("space-y-2", className)}>
+                <FormItem className={cn("flex flex-col gap-2", className)}>
                     <FormLabel>{label}</FormLabel>
                     <FormControl>
                         <div className="relative flex items-center">
                             {Icon && (
-                                <Icon className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                                <Icon className="absolute left-3" />
                             )}
                             <Input
                                 type={type}
                                 step={step}
                                 placeholder={placeholder}
                                 className={cn(
-                                    "bg-secondary/40 border-primary/20 focus-visible:ring-1 focus-visible:ring-primary/50 transition-all",
                                     Icon ? "pl-9" : "",
-                                    fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""
+                                    fieldState.error ? "border-input" : ""
                                 )}
                                 {...field}
                                 value={field.value ?? ""}
@@ -70,20 +68,9 @@ export function FormInputField<TFieldValues extends FieldValues>({
                         </div>
                     </FormControl>
                     {description && !fieldState.error && (
-                        <p className="text-[0.8rem] text-muted-foreground">{description}</p>
+                        <p>{description}</p>
                     )}
-                    <AnimatePresence mode="wait">
-                        {fieldState.error && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0, y: -10 }}
-                                animate={{ opacity: 1, height: "auto", y: 0 }}
-                                exit={{ opacity: 0, height: 0, y: -10 }}
-                                transition={{ duration: 0.2, ease: "easeInOut" }}
-                            >
-                                <FormMessage />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {fieldState.error ? <FormMessage /> : null}
                 </FormItem>
             )}
         />

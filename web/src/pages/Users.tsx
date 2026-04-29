@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -11,11 +10,12 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CrudPage } from "@/components/CrudPage";
 import { UserDialog } from "@/components/UserDialog";
-import { Trash2, Edit2, Users as UsersIcon } from "lucide-react";
+import { Users as UsersIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useDeleteWithConfirm, useUsers, useTableSearch } from "@/hooks";
 import { UserRole, type User } from "../types/api";
+import { CrudRowActions } from "@/components/CrudRowActions";
 
 export const Users = () => {
     const { data: users, error, isLoading, mutate, remove } = useUsers({
@@ -67,17 +67,17 @@ export const Users = () => {
                 {(items) => (
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border/30 hover:bg-transparent">
+                            <TableRow>
                                 <TableHead>Username</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.id} className="border-border/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <TableRow key={item.id}>
                                     <TableCell className="font-medium">{item.username}</TableCell>
                                     <TableCell>{item.email}</TableCell>
                                     <TableCell>
@@ -86,19 +86,15 @@ export const Users = () => {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={item.is_active ? "outline" : "destructive"} className="shadow-sm">
+                                        <Badge variant={item.is_active ? "outline" : "destructive"}>
                                             {item.is_active ? "Active" : "Disabled"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => promptDelete(item.id, item.username)} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        <CrudRowActions
+                                          onEdit={() => openEdit(item)}
+                                          onDelete={() => promptDelete(item.id, item.username)}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -121,7 +117,7 @@ export const Users = () => {
                 isSubmitting={isDeleting}
                 submittingLabel="Deleting..."
                 title="Delete User?"
-                description={<>This will permanently remove <span className="font-semibold text-foreground">{deleteConfirm?.label}</span> and revoke their access. This action cannot be undone.</>}
+                description={<>This will permanently remove <span className="font-semibold">{deleteConfirm?.label}</span> and revoke their access. This action cannot be undone.</>}
                 confirmLabel="Delete User"
             />
         </>

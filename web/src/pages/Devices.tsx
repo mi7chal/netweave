@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -19,9 +18,8 @@ import { CrudPage } from "@/components/CrudPage";
 import { EditDeviceDialog } from "@/components/EditDeviceDialog";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { DeviceIcon } from "@/lib/device-utils";
-import { Trash2, Edit2, Server } from "lucide-react";
+import { Server } from "lucide-react";
 import { useState } from "react";
-import { fetchApi } from "@/lib/api-client";
 import {
   type DeviceListView,
   type CreateDevicePayload,
@@ -29,6 +27,8 @@ import {
 import { useCRUDList, useDeleteWithConfirm, useTableSearch } from "@/hooks";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { CrudRowActions } from "@/components/CrudRowActions";
+import { updateDevice } from "@/lib/api/devices";
 
 export const Devices = () => {
   const navigate = useNavigate();
@@ -86,11 +86,7 @@ export const Devices = () => {
   const handleEditSubmit = async (data: Partial<CreateDevicePayload>) => {
     if (!editDevice) return;
     try {
-      await fetchApi(`/api/devices/${editDevice.id}`, {
-        method: "PUT",
-        silent: true,
-        body: JSON.stringify(data),
-      });
+      await updateDevice(editDevice.id, data);
       mutate();
       setEditDevice(null);
       toast.success("Device updated");
@@ -149,30 +145,27 @@ export const Devices = () => {
           return (
             <Table>
             <TableHeader>
-              <TableRow className="border-border/30 hover:bg-transparent">
+              <TableRow>
                 <TableHead>Hostname</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Primary IP</TableHead>
                 <TableHead>MAC Address</TableHead>
                 <TableHead>OS</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedDevices.map((device) => (
                 <TableRow
                   key={device.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer"
                   onClick={() => navigate(`/devices/${device.id}`)}
                 >
                   <TableCell className="font-medium">
                     {device.hostname}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className="gap-1 hover:bg-secondary"
-                    >
+                    <Badge variant="secondary">
                       <DeviceIcon type={device.device_type} />
                       {device.device_type}
                     </Badge>
@@ -185,18 +178,13 @@ export const Devices = () => {
                             <TooltipTrigger asChild>
                               <Badge
                                 variant="outline"
-                                className={
-                                  device.is_static
-                                    ? "bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px] h-4 px-1.5 shadow-sm uppercase font-semibold tracking-wider cursor-help"
-                                    : "bg-blue-500/10 text-blue-500 border-blue-500/20 text-[9px] h-4 px-1.5 shadow-sm uppercase font-semibold tracking-wider opacity-50 cursor-help"
-                                }
+                                className="cursor-help"
                               >
                                 {device.is_static ? "S" : "D"}
                               </Badge>
                             </TooltipTrigger>
                             <TooltipContent
                               side="top"
-                              className="max-w-[200px]"
                             >
                               {device.is_static
                                 ? "Static reservation — this IP is manually assigned and will not change."
@@ -204,48 +192,30 @@ export const Devices = () => {
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                        <span className="font-mono text-sm">
+                        <span>
                           {device.primary_ip}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span>-</span>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell>
                     {device.mac_address || (
-                      <span className="text-muted-foreground">-</span>
+                      <span>-</span>
                     )}
                   </TableCell>
                   <TableCell>
                     {device.os_info || (
-                      <span className="text-muted-foreground">-</span>
+                      <span>-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditDevice(device);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          promptDelete(device.id, device.hostname);
-                        }}
-                        className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <CrudRowActions
+                        onEdit={() => setEditDevice(device)}
+                        onDelete={() => promptDelete(device.id, device.hostname)}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -280,7 +250,7 @@ export const Devices = () => {
         description={
           <>
             This will permanently delete{" "}
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold">
               {deleteConfirm?.label}
             </span>{" "}
             and all its associated data. This action cannot be undone.

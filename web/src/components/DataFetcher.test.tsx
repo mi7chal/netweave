@@ -4,13 +4,13 @@ import { DataFetcher } from "./DataFetcher";
 
 describe("DataFetcher", () => {
   it("renders loading state", () => {
-    const { container } = render(
+    render(
       <DataFetcher isLoading data={[]} onRetry={vi.fn()}>
         {() => <div>content</div>}
       </DataFetcher>,
     );
 
-    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("renders error state and triggers retry callback", () => {

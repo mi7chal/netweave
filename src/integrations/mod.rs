@@ -5,12 +5,14 @@ use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::sea_query::{Alias, Expr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, QueryFilter,
-    QuerySelect, Set, Statement,
+    ActiveModelTrait, ConnectionTrait, DatabaseBackend, EntityTrait, QueryFilter, QuerySelect, Set,
+    Statement,
 };
 use tokio::time::{sleep, Duration};
 
 pub mod adguard;
+mod lease_actions;
+pub use lease_actions::{trigger_static_lease_delete, trigger_static_lease_push};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntegrationType {
@@ -359,65 +361,6 @@ async fn sync_ip_for_device(
     }
 
     Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Static lease push / delete (unified)
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy)]
-enum LeaseAction {
-    Push,
-    Delete,
-}
-
-async fn trigger_static_lease_action(
-    state: &AppState,
-    action: LeaseAction,
-    mac: &str,
-    ip: &str,
-    hostname: &str,
-) {
-    let active_integrations = match integrations::Entity::find()
-        .filter(integrations::Column::Status.eq("ACTIVE"))
-        .all(&state.db.conn)
-        .await
-    {
-        Ok(list) => list,
-        Err(e) => {
-            tracing::error!("Failed to query active integrations: {}", e);
-            return;
-        }
-    };
-
-    for model in active_integrations {
-        let provider = match create_provider(&model) {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
-
-        let result = match action {
-            LeaseAction::Push => provider.push_static_lease(mac, ip, hostname).await,
-            LeaseAction::Delete => provider.delete_static_lease(mac, ip, hostname).await,
-        };
-
-        if let Err(e) = result {
-            tracing::error!(
-                "Failed to {:?} static lease for integration {}: {}",
-                action,
-                model.name,
-                e
-            );
-        }
-    }
-}
-
-pub async fn trigger_static_lease_push(state: &AppState, mac: &str, ip: &str, hostname: &str) {
-    trigger_static_lease_action(state, LeaseAction::Push, mac, ip, hostname).await;
-}
-
-pub async fn trigger_static_lease_delete(state: &AppState, mac: &str, ip: &str, hostname: &str) {
-    trigger_static_lease_action(state, LeaseAction::Delete, mac, ip, hostname).await;
 }
 
 // ---------------------------------------------------------------------------

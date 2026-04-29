@@ -59,7 +59,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 onOpenChange(nextOpen);
             }}
         >
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Change Password</DialogTitle>
                     <DialogDescription>

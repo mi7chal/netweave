@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "workspace_root": "/Users/michal/Development/homelab_manager",
+  "created_at": {
+    "secs_since_epoch": 1777489134,
+    "nanos_since_epoch": 874933000
+  },
+  "config_files": [
+    {
+      "path": "/Users/michal/Development/homelab_manager/prek.toml",
+      "modified": {
+        "secs_since_epoch": 1777460559,
+        "nanos_since_epoch": 863597537
+      },
+      "size": 1464
+    }
+  ]
+}

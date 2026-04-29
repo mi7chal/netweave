@@ -8,17 +8,13 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
     return (
-        <div className="flex justify-between items-end mb-2 relative z-10 px-1 w-full flex-col md:flex-row gap-4">
-            <div className="w-full">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground flex-shrink-0">
-                    {title}
-                </h1>
-                <p className="text-muted-foreground mt-1.5 text-sm">
-                    {description}
-                </p>
+        <div className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <p className="text-sm text-muted-foreground">{description}</p>
             </div>
             {children && (
-                <div className="flex gap-3 w-full md:w-auto items-center">
+                <div className="flex w-full items-center gap-3 md:w-auto">
                     {children}
                 </div>
             )}

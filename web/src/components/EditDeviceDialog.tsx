@@ -91,19 +91,19 @@ export function EditDeviceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+          <DialogTitle>
             Edit Device
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground/80">
+          <DialogDescription>
             Update device configuration.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="grid gap-4 py-6 max-h-[60vh] overflow-y-auto scrollbar-hide px-1"
+            className="grid max-h-[60vh] gap-4 overflow-y-auto px-1 py-6"
           >
             <FormInputField
               control={form.control}
@@ -142,7 +142,6 @@ export function EditDeviceDialog({
                 name="cpu_cores"
                 label="CPU Cores"
                 type="number"
-                className="[&_input]:h-8 [&_input]:text-sm [&_label]:text-xs"
               />
               <FormInputField
                 control={form.control}
@@ -150,7 +149,6 @@ export function EditDeviceDialog({
                 label="RAM (GB)"
                 type="number"
                 step="0.5"
-                className="[&_input]:h-8 [&_input]:text-sm [&_label]:text-xs"
               />
               <FormInputField
                 control={form.control}
@@ -158,15 +156,13 @@ export function EditDeviceDialog({
                 label="Storage (GB)"
                 type="number"
                 step="1"
-                className="[&_input]:h-8 [&_input]:text-sm [&_label]:text-xs"
               />
             </div>
-            <DialogFooter className="border-t border-border/20 pt-4 mt-2">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="hover:bg-secondary/60"
               >
                 Cancel
               </Button>

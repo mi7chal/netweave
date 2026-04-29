@@ -14,7 +14,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 
 export interface SelectOption {
@@ -47,7 +46,7 @@ export function FormSelectField<TFieldValues extends FieldValues>({
             control={control}
             name={name}
             render={({ field, fieldState }) => (
-                <FormItem className={cn("space-y-2", className)}>
+                <FormItem className={cn("flex flex-col gap-2", className)}>
                     <FormLabel>{label}</FormLabel>
                     <Select
                         onValueChange={field.onChange}
@@ -56,20 +55,18 @@ export function FormSelectField<TFieldValues extends FieldValues>({
                         <FormControl>
                             <SelectTrigger
                                 className={cn(
-                                    "bg-secondary/40 border-primary/20 focus:ring-1 focus:ring-primary/50 transition-all",
-                                    fieldState.error ? "border-destructive focus:ring-destructive" : ""
+                                    fieldState.error ? "border-input" : ""
                                 )}
                             >
                                 <SelectValue placeholder={placeholder} />
                             </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-background/95 backdrop-blur-md border border-primary/20 shadow-xl">
+                        <SelectContent>
                             {options.map((option) => (
                                 <SelectItem
                                     key={option.value}
                                     value={option.value}
                                     disabled={option.disabled}
-                                    className="focus:bg-primary/20 cursor-pointer"
                                 >
                                     {option.label}
                                 </SelectItem>
@@ -77,20 +74,9 @@ export function FormSelectField<TFieldValues extends FieldValues>({
                         </SelectContent>
                     </Select>
                     {description && !fieldState.error && (
-                        <p className="text-[0.8rem] text-muted-foreground">{description}</p>
+                        <p>{description}</p>
                     )}
-                    <AnimatePresence mode="wait">
-                        {fieldState.error && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0, y: -10 }}
-                                animate={{ opacity: 1, height: "auto", y: 0 }}
-                                exit={{ opacity: 0, height: 0, y: -10 }}
-                                transition={{ duration: 0.2, ease: "easeInOut" }}
-                            >
-                                <FormMessage />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {fieldState.error ? <FormMessage /> : null}
                 </FormItem>
             )}
         />

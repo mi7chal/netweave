@@ -47,44 +47,44 @@ export function UserDialog({ open, onOpenChange, onSaved, initialData }: UserDia
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{isEdit ? "Edit User" : "New User"}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground/80">Configure user details and access level.</DialogDescription>
+                    <DialogTitle>{isEdit ? "Edit User" : "New User"}</DialogTitle>
+                    <DialogDescription>Configure user details and access level.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                        <Input id="username" placeholder="johndoe" value={formData.username || ""} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
+                        <Label htmlFor="username">Username</Label>
+                        <Input id="username" placeholder="johndoe" value={formData.username || ""} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-                        <Input id="email" type="email" placeholder="john@example.com" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" type="email" placeholder="john@example.com" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="password" className="text-sm font-medium">Password {isEdit && "(Leave blank to keep current)"}</Label>
-                        <Input id="password" type="password" placeholder="••••••••" value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-secondary/40 border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-lg" />
+                        <Label htmlFor="password">Password {isEdit && "(Leave blank to keep current)"}</Label>
+                        <Input id="password" type="password" placeholder="••••••••" value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                     </div>
                     <div className="grid gap-2">
-                        <Label className="text-sm font-medium">Role</Label>
+                        <Label>Role</Label>
                         <Select value={formData.role || UserRole.Viewer} onValueChange={(val) => setFormData({ ...formData, role: val as CreateUserPayload["role"] })}>
-                            <SelectTrigger className="bg-secondary/40 border-border/40 focus:ring-primary/40 focus:border-primary/50 transition-all rounded-lg"><SelectValue placeholder="Select role" /></SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={UserRole.Viewer}>Viewer</SelectItem>
                                 <SelectItem value={UserRole.Admin}>Admin</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4 transition-all hover:bg-secondary/40">
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-medium">Active Status</Label>
-                            <p className="text-sm text-muted-foreground/80">Allow this user to log in.</p>
+                    <div className="flex items-center justify-between border p-4">
+                        <div className="flex flex-col gap-0.5">
+                            <Label>Active Status</Label>
+                            <p>Allow this user to log in.</p>
                         </div>
                         <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
                     </div>
                 </div>
-                <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleSave}>Save</Button>
                 </DialogFooter>
             </DialogContent>

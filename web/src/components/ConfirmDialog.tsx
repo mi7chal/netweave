@@ -17,7 +17,6 @@ interface ConfirmDialogProps {
     title: string;
     description: ReactNode;
     confirmLabel?: string;
-    variant?: "destructive" | "default";
     isSubmitting?: boolean;
     submittingLabel?: string;
 }
@@ -29,7 +28,6 @@ export function ConfirmDialog({
     title,
     description,
     confirmLabel = "Confirm",
-    variant = "destructive",
     isSubmitting = false,
     submittingLabel = "Working...",
 }: ConfirmDialogProps) {
@@ -41,7 +39,7 @@ export function ConfirmDialog({
                 onOpenChange(nextOpen);
             }}
         >
-            <AlertDialogContent className="bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>{title}</AlertDialogTitle>
                     <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -49,7 +47,6 @@ export function ConfirmDialog({
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                        className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
                         disabled={isSubmitting}
                         onClick={(event) => {
                             event.preventDefault();

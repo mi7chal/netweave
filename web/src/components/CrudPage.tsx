@@ -1,8 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DataFetcher } from "@/components/DataFetcher";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
@@ -48,7 +47,7 @@ export interface CrudPageProps<T> {
   loadingComponent?: React.ReactNode;
 
   /**
-   * If true, the children won't be wrapped in a GlassCard.
+   * If true, the children won't be wrapped in a Card container.
    * Useful for grid layouts where items are cards themselves.
    */
   noContainer?: boolean;
@@ -72,7 +71,7 @@ export interface CrudPageProps<T> {
  *  - AppLayout wrapper
  *  - PageHeader with search + add button
  *  - DataFetcher (loading / error / empty / data states)
- *  - GlassCard table container (optional)
+ *  - Card table container (optional)
  *
  * The caller only needs to provide the content via the `children` render prop.
  */
@@ -100,7 +99,7 @@ export function CrudPage<T>({
 }: CrudPageProps<T>) {
   return (
     <AppLayout>
-      <div className="flex flex-col space-y-6">
+      <div className="flex flex-col gap-6">
         <PageHeader title={title} description={description}>
           <SearchInput
             value={searchValue}
@@ -111,7 +110,7 @@ export function CrudPage<T>({
           {headerActions}
           <Button
             onClick={onAdd}
-            className="gap-2 shadow-sm rounded-full h-10 px-5 flex-shrink-0 hover:scale-105 transition-all duration-300"
+            className="gap-2"
           >
             <Plus className="h-4 w-4" />
             {addLabel}
@@ -125,11 +124,11 @@ export function CrudPage<T>({
           onRetry={onRetry}
           loadingComponent={
             loadingComponent || (
-              <GlassCard>
+              <Card>
                 <CardContent className="p-6">
                   <TableLoadingSkeleton rows={5} columns={skeletonColumns} />
                 </CardContent>
-              </GlassCard>
+              </Card>
             )
           }
           errorComponent={(err, retry) => (
@@ -147,11 +146,11 @@ export function CrudPage<T>({
             noContainer ? (
               children(filteredData)
             ) : (
-              <GlassCard>
+              <Card>
                 <CardContent className="p-0">
                   {children(filteredData)}
                 </CardContent>
-              </GlassCard>
+              </Card>
             )
           }
         </DataFetcher>

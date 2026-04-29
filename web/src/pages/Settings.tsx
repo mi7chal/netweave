@@ -1,115 +1,112 @@
-import { useEffect, useState } from 'react';
-import { AppLayout } from '@/layouts/AppLayout';
-import { PageHeader } from '@/components/PageHeader';
-import { fetchApi } from '@/lib/api-client';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { motion } from 'framer-motion';
-import { Globe, Users } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from "react";
+import { AppLayout } from "@/layouts/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Globe, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { getSettings, updateSetting } from "@/lib/api/settings";
 
 export function Settings() {
-    const [homepagePublic, setHomepagePublic] = useState(false);
-    const [oidcAutoImport, setOidcAutoImport] = useState(false);
-    const [loading, setLoading] = useState(true);
+  const [homepagePublic, setHomepagePublic] = useState(false);
+  const [oidcAutoImport, setOidcAutoImport] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchApi<Record<string, string>>('/api/settings')
-            .then(data => {
-                setHomepagePublic(data.homepage_public === 'true');
-                setOidcAutoImport(data.oidc_auto_import === 'true');
-            })
-            .finally(() => setLoading(false));
-    }, []);
+  useEffect(() => {
+    getSettings()
+      .then((data) => {
+        setHomepagePublic(data.homepage_public === "true");
+        setOidcAutoImport(data.oidc_auto_import === "true");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-    const handleToggle = async (key: string, checked: boolean, currentVal: boolean, setVal: (val: boolean) => void) => {
-        setVal(checked);
-        try {
-            await fetchApi('/api/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [key]: checked }),
-            });
-            toast.success('Settings updated');
-        } catch {
-            setVal(currentVal);
-            toast.error('Failed to update settings');
-        }
-    };
+  const handleToggle = async (
+    key: string,
+    checked: boolean,
+    currentVal: boolean,
+    setVal: (val: boolean) => void,
+  ) => {
+    setVal(checked);
+    try {
+      await updateSetting(key, checked);
+      toast.success("Settings updated");
+    } catch {
+      setVal(currentVal);
+      toast.error("Failed to update settings");
+    }
+  };
 
-    return (
-        <AppLayout>
-            <PageHeader title="Settings" description="Application configuration" />
-            {loading ? (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-2xl mt-6"
-                >
-                    <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-6 space-y-6">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3 flex-1">
-                                <Skeleton className="h-10 w-10 rounded-xl" />
-                                <div className="flex-1">
-                                    <Skeleton className="h-5 w-32 rounded mb-2" />
-                                    <Skeleton className="h-4 w-64 rounded" />
-                                </div>
-                            </div>
-                            <Skeleton className="h-6 w-12 rounded-full" />
-                        </div>
-                    </div>
-                </motion.div>
-            ) : (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-2xl mt-6"
-                >
-                    <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-6 space-y-6">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                                    <Globe className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <Label htmlFor="homepage-public" className="text-base font-semibold">
-                                        Public Homepage
-                                    </Label>
-                                    <p className="text-sm text-muted-foreground mt-0.5">
-                                        Allow unauthenticated users to view the dashboard homepage
-                                    </p>
-                                </div>
-                            </div>
-                            <Switch
-                                id="homepage-public"
-                                checked={homepagePublic}
-                                onCheckedChange={(checked) => handleToggle('homepage_public', checked, homepagePublic, setHomepagePublic)}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                                    <Users className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <Label htmlFor="oidc-auto-import" className="text-base font-semibold">
-                                        OIDC Auto Import
-                                    </Label>
-                                    <p className="text-sm text-muted-foreground mt-0.5">
-                                        Automatically create local users when they log in via OIDC
-                                    </p>
-                                </div>
-                            </div>
-                            <Switch
-                                id="oidc-auto-import"
-                                checked={oidcAutoImport}
-                                onCheckedChange={(checked) => handleToggle('oidc_auto_import', checked, oidcAutoImport, setOidcAutoImport)}
-                            />
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-        </AppLayout>
-    );
+  return (
+    <AppLayout>
+      <PageHeader title="Settings" description="Application configuration" />
+      <Card className="mt-6 max-w-2xl">
+        <CardContent className="flex flex-col gap-6 p-6">
+          <SettingRow
+            icon={Globe}
+            id="homepage-public"
+            title="Public Homepage"
+            description="Allow unauthenticated users to view the dashboard homepage."
+            checked={homepagePublic}
+            loading={loading}
+            onCheckedChange={(checked) =>
+              handleToggle("homepage_public", checked, homepagePublic, setHomepagePublic)
+            }
+          />
+          <SettingRow
+            icon={Users}
+            id="oidc-auto-import"
+            title="OIDC Auto Import"
+            description="Automatically create local users when they log in via OIDC."
+            checked={oidcAutoImport}
+            loading={loading}
+            onCheckedChange={(checked) =>
+              handleToggle("oidc_auto_import", checked, oidcAutoImport, setOidcAutoImport)
+            }
+          />
+        </CardContent>
+      </Card>
+    </AppLayout>
+  );
+}
+
+function SettingRow({
+  icon: Icon,
+  id,
+  title,
+  description,
+  checked,
+  loading,
+  onCheckedChange,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  id: string;
+  title: string;
+  description: string;
+  checked: boolean;
+  loading: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center">
+          <Icon />
+        </div>
+        <div>
+          <Label htmlFor={id}>
+            {title}
+          </Label>
+          <p>{description}</p>
+        </div>
+      </div>
+      {loading ? (
+        <Skeleton className="h-6 w-12" />
+      ) : (
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      )}
+    </div>
+  );
 }

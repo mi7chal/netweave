@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Form } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormInputField } from "./forms/FormInputField";
+import { Textarea } from "@/components/ui/textarea";
 import { fetchApi } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { Network } from "@/types/api";
@@ -74,12 +75,12 @@ export function NetworkDialog({ open, onOpenChange, onSaved, initialData }: Netw
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                    <DialogTitle>
                         {initialData?.id ? "Edit Network" : "New Network"}
                     </DialogTitle>
-                    <DialogDescription className="text-muted-foreground/80">
+                    <DialogDescription>
                         Defines a network segment.
                     </DialogDescription>
                 </DialogHeader>
@@ -112,14 +113,21 @@ export function NetworkDialog({ open, onOpenChange, onSaved, initialData }: Netw
                                 placeholder="192.168.1.1"
                             />
                         </div>
-                        <FormInputField
+                        <FormField
                             control={form.control}
                             name="description"
-                            label="Description"
-                            placeholder="Main trusted network"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Main trusted network" {...field} value={field.value ?? ""} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                         />
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit">Save</Button>
                         </DialogFooter>
                     </form>

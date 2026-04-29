@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -12,12 +11,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CrudPage } from "@/components/CrudPage";
 import { ServiceDialog } from "@/components/ServiceDialog";
-import { Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDeleteWithConfirm, useServices, useTableSearch } from "@/hooks";
 import type { Service } from "../types/api";
+import { CrudRowActions } from "@/components/CrudRowActions";
 
 export const Services = () => {
     const { services, error, isLoading, mutate, remove } = useServices({
@@ -69,53 +68,38 @@ export const Services = () => {
                 {(items) => (
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border/30 hover:bg-transparent">
+                            <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>URL</TableHead>
                                 <TableHead>Visibility</TableHead>
                                 <TableHead>Uptime</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.id} className="border-border/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <TableRow key={item.id}>
                                     <TableCell className="font-medium">{item.name}</TableCell>
                                     <TableCell>
-                                        <a href={item.base_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                                        <a href={item.base_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
                                             {item.base_url} <ExternalLink size={12} />
                                         </a>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={item.is_public ? "outline" : "secondary"} className="shadow-sm">
+                                        <Badge variant={item.is_public ? "outline" : "secondary"}>
                                             {item.is_public ? "Public" : "Private"}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>
-                                        <span className={cn(
-                                            "text-sm font-medium",
-                                            (item.uptime_percentage ?? 100) >= 99
-                                                ? "text-green-500"
-                                                : (item.uptime_percentage ?? 100) >= 95
-                                                    ? "text-amber-500"
-                                                    : "text-destructive"
-                                        )}>
-                                            {(item.uptime_percentage ?? 100).toFixed(1)}%
-                                        </span>
-                                    </TableCell>
+                                    <TableCell>{(item.uptime_percentage ?? 100).toFixed(1)}%</TableCell>
                                     <TableCell>
                                         <StatusBadge status={item.status} />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-colors">
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => promptDelete(item.id, item.name)} className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        <CrudRowActions
+                                          onEdit={() => openEdit(item)}
+                                          onDelete={() => promptDelete(item.id, item.name)}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -138,7 +122,7 @@ export const Services = () => {
                 isSubmitting={isDeleting}
                 submittingLabel="Deleting..."
                 title="Delete Service?"
-                description={<>This will permanently remove <span className="font-semibold text-foreground">{deleteConfirm?.label}</span> and its monitoring history. This action cannot be undone.</>}
+                description={<>This will permanently remove <span className="font-semibold">{deleteConfirm?.label}</span> and its monitoring history. This action cannot be undone.</>}
                 confirmLabel="Delete Service"
             />
         </>

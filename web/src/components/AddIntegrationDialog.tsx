@@ -11,6 +11,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FormInputField } from "./forms/FormInputField";
 import { FormSelectField } from "./forms/FormSelectField";
 import { useState } from "react";
@@ -83,10 +84,10 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
             if (!open) form.reset();
             onOpenChange(open);
         }}>
-            <DialogContent className="sm:max-w-[450px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Add Integration</DialogTitle>
-                    <DialogDescription className="text-muted-foreground/80">
+                    <DialogTitle>Add Integration</DialogTitle>
+                    <DialogDescription>
                         Connect external services to synchronize your network data.
                     </DialogDescription>
                 </DialogHeader>
@@ -111,20 +112,13 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
                         />
 
                         {form.watch("providerType") === "AdGuardHome" && (
-                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-2">
-                                <div className="flex items-start gap-3">
-                                    <Info className="h-5 w-5 text-primary mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-primary">Self-Hosted AdGuard Home</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed">
-                                            Use the same <strong>Username</strong> and <strong>Password</strong> you use to access the AdGuard Home web dashboard.
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground/70 italic mt-1">
-                                            Note: Include the port if your dashboard isn't on 80/443 (e.g., http://192.168.1.5:3000).
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                            <Alert>
+                                <Info />
+                                <AlertTitle>Self-Hosted AdGuard Home</AlertTitle>
+                                <AlertDescription>
+                                    Use the same Username and Password you use to access the AdGuard Home web dashboard. Include the port if your dashboard is not on 80/443 (for example, http://192.168.1.5:3000).
+                                </AlertDescription>
+                            </Alert>
                         )}
 
                         <FormInputField
@@ -153,8 +147,8 @@ export const AddIntegrationDialog = ({ isOpen, onOpenChange, onSaved }: AddInteg
                             />
                         </div>
 
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button type="submit" disabled={loading} className="w-full sm:w-auto px-8">
+                        <DialogFooter>
+                            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                                 {loading ? "Connecting..." : "Add Integration"}
                             </Button>
                         </DialogFooter>

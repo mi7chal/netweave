@@ -42,10 +42,10 @@ export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-card/80 backdrop-blur-2xl border-border/40 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{title || "Assign Static IP"}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground/80">
+                    <DialogTitle>{title || "Assign Static IP"}</DialogTitle>
+                    <DialogDescription>
                         {description || (macLabel ? `Enter the IPv4 address to reserve for this interface (${macLabel}).` : "Enter the IPv4 address to reserve for this device.")}
                     </DialogDescription>
                 </DialogHeader>
@@ -55,11 +55,10 @@ export function AssignStaticIpDialog({ open, onOpenChange, onSubmit, defaultIp, 
                             control={form.control}
                             name="ip"
                             label="IP Address"
-                            className="[&_input]:font-mono"
                             description="This will release the existing dynamic lease and reserve this specific address."
                         />
-                        <DialogFooter className="border-t border-border/20 pt-4 mt-2">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-secondary/60">Cancel</Button>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit">{submitLabel || "Confirm Reservation"}</Button>
                         </DialogFooter>
                     </form>
